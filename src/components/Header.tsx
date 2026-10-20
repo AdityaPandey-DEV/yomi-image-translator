@@ -25,6 +25,7 @@ interface HeaderProps {
   onLoadSample: (type: 'shonen' | 'romance') => void;
   onOpenHelp: () => void;
   onUploadClick: () => void;
+  isExtensionLinked?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -38,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLoadSample,
   onOpenHelp,
   onUploadClick,
+  isExtensionLinked = false,
 }) => {
   const isKeyActive = Boolean(
     (byokConfig.activeProvider === 'google' && byokConfig.googleApiKey) ||
@@ -51,21 +53,18 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="h-16 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-md px-4 flex items-center justify-between z-30 select-none shrink-0">
       {/* Brand & Logo */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20 text-white font-black text-xl">
-          {/* Yomi Gate Icon */}
-          <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-            <path d="M2 4h20v2H2V4zm2 3h16v1.5H4V7zm3 2.5h2V20H7V9.5zm8 0h2V20h-2V9.5zM3 2h18v1.5H3V2z" />
-          </svg>
+        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-orange-500/20 shrink-0">
+          <img src="/icons/icon128.png" alt="App Logo" className="w-full h-full object-contain" />
         </div>
         <div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg text-neutral-100 tracking-tight">Yomi</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
-              Manga Studio 2.0
+              Image Translator
             </span>
           </div>
           <p className="text-[11px] text-neutral-400 leading-none mt-0.5">
-            AI Manga, Manhwa & Webtoon Translator
+            AI Image & Comic Translator Studio
           </p>
         </div>
       </div>
@@ -141,12 +140,28 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Extension Button */}
         <button
           onClick={onOpenExtensionModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 transition-colors"
-          title="Install Browser Extension for Chrome, Edge, Brave"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+            isExtensionLinked
+              ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40 hover:bg-emerald-900/50'
+              : 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border-orange-500/30'
+          }`}
+          title={isExtensionLinked ? "Yomi Extension Linked & Active" : "Install Browser Extension for Chrome, Edge, Brave"}
         >
           <Puzzle className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Extension</span>
+          <span className="hidden sm:inline">
+            {isExtensionLinked ? 'Extension Linked' : 'Extension'}
+          </span>
+          {isExtensionLinked && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
         </button>
+
+        {/* Sign In Link */}
+        <a
+          href="/signin"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-800 transition-colors"
+          title="Sign in with Extension / Connect SSO"
+        >
+          Sign In
+        </a>
 
         {/* BYOK Status Button */}
         <button

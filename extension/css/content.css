@@ -1,0 +1,1288 @@
+@font-face {
+    font-family: "KomikaJam";
+    src: url("/fonts/KomikaJam.ttf");
+}
+
+@font-face {
+    font-family: "Bangers";
+    src: url("/fonts/Bangers.woff2");
+}
+
+@font-face {
+    font-family: "NotoSans";
+    src: url("/fonts/NotoSans.woff2");
+}
+
+@font-face {
+    font-family: "WildWords";
+    src: url("/fonts/WildWords.otf");
+}
+
+@font-face {
+    font-family: "Figtree";
+    src: url("/fonts/Figtree.woff2");
+}
+
+@font-face {
+    font-family: "Edo";
+    src: url("/fonts/Edo.ttf");
+}
+
+@font-face {
+    font-family: "RIDIBatang";
+    src: url("/fonts/RIDIBatang.otf");
+}
+
+@font-face {
+    font-family: "Bushidoo";
+    src: url("/fonts/Bushidoo.ttf");
+}
+
+@font-face {
+    font-family: "Hayah";
+    src: url("/fonts/Hayah.otf");
+}
+
+@font-face {
+    font-family: "Itim";
+    src: url("/fonts/Itim.woff2");
+}
+
+@font-face {
+    font-family: "MogulIrina";
+    src: url("/fonts/MogulIrina.ttf");
+}
+
+@font-face {
+    font-family: "BadComic";
+    src: url("/fonts/BadComic.woff2");
+}
+
+@font-face {
+    font-family: "MaShanZheng";
+    src: url("/fonts/MaShanZheng.woff2");
+}
+
+@font-face {
+    font-family: "Kalam";
+    src: url("/fonts/Kalam.woff2");
+}
+
+@font-face {
+    font-family: "HindSiliguri";
+    src: url("/fonts/HindSiliguri.woff2");
+}
+
+@font-face {
+    font-family: "Heroika";
+    src: url("/fonts/Heroika.woff2");
+}
+
+@font-face {
+    font-family: "Shonen";
+    src: url("/fonts/Shonen.woff2");
+}
+
+.komika {
+    font-family: "KomikaJam";
+}
+
+.bangers {
+    font-family: "Bangers";
+}
+
+.edo {
+    font-family: "Edo";
+}
+
+.ridi {
+    font-family: "RIDIBatang";
+}
+
+.bushidoo {
+    font-family: "Bushidoo";
+}
+
+.notosans {
+    font-family: "NotoSans";
+}
+
+.hayah {
+    font-family: "Hayah";
+}
+
+.kalam {
+    font-family: "Kalam";
+}
+
+.hindsiliguri {
+    font-family: "HindSiliguri";
+}
+
+.heroika {
+    font-family: "Heroika";
+}
+
+.shonen {
+    font-family: "Shonen";
+}
+
+.itim {
+    font-family: "Itim";
+}
+
+.wildwords {
+    font-family: "WildWords";
+}
+
+.mogul {
+    font-family: "MogulIrina";
+}
+
+.badcomic {
+    font-family: "BadComic";
+}
+
+.mashanzheng {
+    font-family: "MaShanZheng";
+}
+
+.font-figtree {
+    font-family: Figtree, sans-serif;
+}
+
+/* translate.html sets the UI font on <body>. There is no <body> above this tree, and
+   font-family is inherited - a shadow root inherits from its host element, which inherits from
+   the HOST PAGE. So without this, every panel, modal and dropdown Yomi draws renders in
+   whatever font the site it is sitting on happens to use, differing from site to site. :host is
+   the closest thing this tree has to that <body>.
+
+   !important because the host element does live in the page DOM, where a page-wide rule such as
+   * { font-family: ... !important } would otherwise beat it. It does not override the font
+   classes above: a declaration on an element always beats a value merely inherited into it.
+
+   Nothing on the page inherits this - the host has no light-DOM children. (The overlay in
+   addSpinnerToImage that does take a child is a different, locally-scoped element that happens
+   to share the name.) */
+:host,
+html.yomi-edit-frame,
+html.yomi-edit-frame body {
+    font-family: Figtree, sans-serif !important;
+}
+
+/* font-family and font-size (the latter in main.css) were the two that bit us, but they are not
+   special - EVERY inherited property crosses the shadow boundary the same way, and the host
+   element is the only place to stop them. The box properties are already pinned inline on the
+   host in content.js; this is the typography half of the same defence.
+
+   The values are CSS initials, i.e. "as if the page had never styled its text". Sites really do
+   set these globally: line-height and letter-spacing constantly, word-break on CJK readers,
+   text-shadow for legibility over art, and writing-mode/direction on Japanese and Arabic sites -
+   which is the pair that would rotate or mirror this entire UI.
+
+   !important for the reason spelled out above: a page rule targeting the host element outranks
+   :host. None of it reaches our own components - a declaration on an element always beats a
+   value merely inherited into it, so every Tailwind class still wins. This only decides what an
+   element that sets nothing gets, and the point is that it should be ours rather than theirs.
+
+   Deliberately NOT `all: initial`: that resets non-inherited properties too, including the ones
+   content.js pins on the host on purpose, and leaves the two mechanisms fighting over the host's
+   own box. */
+:host,
+html.yomi-edit-frame,
+html.yomi-edit-frame body {
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-variant: normal !important;
+    line-height: normal !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    text-transform: none !important;
+    text-shadow: none !important;
+    text-decoration: none !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    direction: ltr !important;
+    cursor: auto !important;
+    list-style: none !important;
+    -webkit-text-size-adjust: 100% !important;
+    color: #262626 !important;
+}
+
+/* Same reasoning; the dark class is toggled on the host itself. */
+:host(.dark) {
+    color: #f5f5f5 !important;
+}
+
+/* The edit UI is an app surface, not a document: pinch-zooming it only blurs the controls and
+   pushes them off screen. Set on the frame's root because touch-action intersects down the
+   ancestor chain, so this one rule covers every descendant - including the canvas, whose own
+   two-finger zoom is JS with preventDefault() and never needed the browser's gesture. */
+html.yomi-edit-frame,
+html.yomi-edit-frame body {
+    touch-action: pan-x pan-y;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+html.yomi-edit-frame body > div:first-child {
+    padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    padding-left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(8px, env(safe-area-inset-right, 0px)) !important;
+}
+
+@media (min-width: 80rem) {
+    html.yomi-edit-frame body > div:first-child {
+        padding-top: max(16px, env(safe-area-inset-top, 0px)) !important;
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: max(16px, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(16px, env(safe-area-inset-right, 0px)) !important;
+    }
+}
+
+/* The side panel is overflow:auto, which is both axes - and its rows run a few pixels wide of
+   the box, so on a touchscreen it slid left and right by about 10px with nothing to see there.
+   A mouse never surfaced it: there is no horizontal wheel gesture and the bar was too short to
+   drag. Vertical is the only scroll this panel has ever meant to offer. */
+html.yomi-edit-frame #settings {
+    overflow-x: hidden;
+}
+
+/* Counter-scale for pages laid out wider than the screen and shrunk to fit - see
+   refreshYomiScale() in content.js. Never put this on a canvas: zoom wrecks the backing store. */
+.yomi,
+#yomi-menu,
+#yomi-details-modal,
+#yomi-download-modal {
+    zoom: var(--yomi-scale, 1);
+}
+
+/* Viewport units do not live in the zoomed coordinate space: 70vh resolves against the real
+   viewport and is THEN scaled, so on a page counter-scaled 2x the details body rendered ~140vh
+   tall and pushed its own header - and the close button with it - off the top of the screen.
+   Dividing by the same factor puts them back in the element's own space. Both selectors beat
+   their Tailwind arbitrary values by being unlayered. */
+#yomi-details-body {
+    max-height: calc(70vh / var(--yomi-scale, 1));
+}
+
+#yomi-menu {
+    max-width: calc((100vw - 1rem) / var(--yomi-scale, 1));
+}
+
+/* The bottom-right toasts showGeneralError and showGeneralSuccess put up. Tailwind dresses
+   them; these are the two things it cannot give them - the counter-scale every other Yomi
+   surface gets, without which they render at the page's own shrunken size while the rest of
+   the UI is corrected, and a bound so a long sentence stops short of the far edge instead of
+   running the full width with no margin left on it. Ids, so they outrank the utilities. */
+#general-error-toast,
+#general-success-toast {
+    zoom: var(--yomi-scale, 1);
+    max-width: calc((100vw - 2rem) / var(--yomi-scale, 1));
+}
+
+.yomi {
+    box-sizing: content-box;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    flex-direction: row;
+    /* Between the icon and the error toast, and as a gap rather than a margin on the toast so
+       it lands on the correct side once the row reverses. The panel is absolutely positioned
+       and out of flow, so it never picks this up. */
+    gap: 10px;
+    z-index: 2147483640;
+}
+
+/* Set by placeYomi when the gate is pinned to the top-right: the icon comes first in the DOM,
+   so without this the toast would sit between it and the corner it is meant to occupy. */
+.yomi-reversed {
+    flex-direction: row-reverse;
+}
+
+.yomi-icon {
+    box-sizing: content-box;
+    cursor: pointer;
+    opacity: 0.3;
+    scale: 0.8;
+}
+
+.yomi-hover {
+    opacity: 1 !important;
+    cursor: pointer !important;
+}
+
+/* The last cell of the row, and the only one that is a readout rather than a button, so it
+   sizes to its text instead of taking a square of its own. */
+.yomi-credits {
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: nowrap;
+    text-wrap: nowrap;
+    word-break: keep-all;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    /* stretch only fills this cell's own flex LINE, and once the bar wraps far enough this is
+       alone on its line - which is then sized by the two-row stack inside it and comes out
+       shorter than a button. The floor is what keeps every line the same height. */
+    min-height: var(--yomi-cell);
+    flex: 0 0 auto;
+    gap: 4px;
+    color: #d4d4d4;
+    /* Not inherited from .yomi-hover's `cursor: pointer !important` on the bar - importance
+       does not survive inheritance, so a plain declaration here wins. Until an image has been
+       translated this cell opens nothing. */
+    cursor: default;
+    border-radius: 6px;
+    padding: 0 10px;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    transition: background-color 0.12s ease-out, color 0.12s ease-out;
+}
+
+/* Only once the image has been translated does the chip carry a cost and open the details
+   panel; until then it is a plain readout and must not invite a click - so the hover
+   affordance is on the clickable variant only, not on .yomi-credits itself. */
+/* Deliberately larger than the 12px label beside it - at matching size the glyph reads as
+   punctuation rather than a control. */
+.yomi-credits-info {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    fill: #06b6d4;
+}
+
+/* Balance over this image's cost. Stacked because side by side they made the one cell that is
+   not a button the widest thing in the bar. */
+.yomi-credits-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+/* The rule that replaces the "|" the two numbers used to be joined by. Semi-opaque so it reads
+   as a separator inside one readout rather than a border between two cells. */
+.yomi-credits-used {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.yomi-credits-clickable {
+    cursor: pointer;
+}
+
+.yomi-credits-clickable:hover {
+    background-color: rgba(64, 64, 64, 0.5);
+    color: #ffffff;
+}
+
+/* The same toast showGeneralError puts up: red-500, white text, px-4 py-2, rounded-lg and
+   shadow-lg. It sets no font of its own either, so this inherits Figtree at the default size
+   from :host rather than declaring 20px bold Arial.
+
+   Only the appearance is different. display stays none here because the script flips it to
+   flex inline, position stays relative because the close button is positioned against it, and
+   the margin, cursor and z-index are all as they were. */
+.yomi-notification {
+    box-sizing: border-box;
+    position: relative;
+    /* px-4 py-2, with extra on the right for the close button - the toast has no equivalent
+       of it, so that is the one measurement that cannot be copied straight across. */
+    padding: 8px 34px 8px 16px;
+    cursor: pointer;
+    color: #ffffff;
+    background-color: #ef4444;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    text-align: left;
+    z-index: 5;
+}
+
+/* Inside the toast now rather than hanging off its corner, which only worked when the
+   surface behind it was white. Colour on hover instead of growth, like every other close
+   button in the UI. */
+.yomi-notification-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: color 0.12s ease-out;
+}
+
+.yomi-notification-close:hover {
+    color: #ffffff;
+}
+
+/* ─── The hover panel ────────────────────────────────────────────────────────
+   One surface holding both rows, rather than each part carrying its own fill and border.
+   Card colours, 1px neutral border and a soft shadow, matching the popup and the workspace
+   sidebar - the shadow is what keeps it legible over an arbitrary page's imagery now that
+   the fill is a neutral rather than a saturated cyan.
+
+   Squared off with a 12px radius, the same as the modals, so it reads as a small panel
+   rather than a floating capsule.
+
+   No padding and no gaps: both rows run the full width of the panel, and overflow:hidden
+   clips their square corners to the panel's radius. That is what makes each row read as one
+   control rather than as buttons sitting inside a container - the cells have padding of
+   their own for breathing room, but nothing has a margin. */
+.yomi-utility {
+    /* Square cells, sized for a thumb: the row sat at 34x30 and users were missing it four
+       times in a row on a phone. The bar's height follows from this plus the padding. */
+    --yomi-cell: 38px;
+    /* One value for both, so a button is the same distance from its neighbour as from the
+       bar's edge - the gaps read as one rhythm rather than two measurements. */
+    --yomi-gap: 4px;
+    /* max-content, not auto. This is an absolutely positioned box whose containing block is
+       .yomi - only as wide as the 55px gate icon - and placeYomi offsets it by nearly all of
+       that, so shrink-to-fit is left about 1.5px of available width and the used width collapses
+       to whatever the engine calls min-content. Firefox on Android answered 68px for a 143px
+       row, and the bar painted out from under its own buttons. */
+    width: max-content;
+    height: auto;
+    opacity: 0;
+    /* opacity:0 hides the panel but leaves it hit-testable, so an invisible strip beside the
+       gate icon was still taking taps. Harmless enough when the buttons behind it were auto
+       and download; not once one of them translates. */
+    pointer-events: none;
+    position: absolute;
+    /* Centred on the gate icon by its FIRST ROW, not by its whole height - so the top-left
+       corner sits in the same place however many rows the cells wrap onto, and the bar only
+       ever grows downwards. Centring the whole thing let a squeezed, near-vertical bar climb
+       up over the icon, where it covered the one control that opens it.
+       50% is half of .yomi, which is the icon's layout box: its scale: 0.8 is a transform and
+       does not change that. The subtrahend is one row - a cell, the padding above and below it,
+       and the two borders. */
+    top: calc(50% - (var(--yomi-cell) + 2 * var(--yomi-gap) + 2px) / 2);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    /* The bar is as wide as its contents until placeYomi caps it at whatever room is left
+       before the edge of the screen, at which point the cells fall onto further rows - down to
+       a single column, which is as narrow as it can get. Centred so that a capped bar splits
+       its leftover width evenly instead of pooling it on one side. */
+    flex-wrap: wrap;
+    justify-content: center;
+    box-sizing: border-box;
+    gap: var(--yomi-gap);
+    padding: var(--yomi-gap);
+    /* The options bar from edit mode, minus its section dividers - same dark fill, same 10px
+       corner, same shadow, and the same rounded-md wash under each button. Two floating icon
+       rows over an image should not be two different objects. */
+    background-color: #1f1f1f;
+    border: 1px solid #3f3f3f;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.38);
+}
+
+.yomi-utility.yomi-hover {
+    pointer-events: auto;
+}
+
+/* Set by placeYomi when the gate is pinned to the top-right and the bar opens leftwards. */
+.yomi-utility-reversed {
+    flex-direction: row-reverse;
+}
+
+/* ─── Action buttons ─────────────────────────────────────────────────────────
+   Icon-only squares that tile the row, transparent until hovered. Fixed rather than shared
+   out with flex: 1, so a button is the same size to aim at whether or not download and edit
+   happen to be showing - the row grows, the targets do not move under the thumb.
+
+   Nothing changes size on a hover - only colour. */
+.yomi-action,
+.yomi-auto,
+.yomi-download,
+.yomi-edit {
+    box-sizing: border-box;
+    /* Sized through width/min-width rather than flex-basis. Firefox on Android leaves a
+       flex-basis that came from a custom property out of the container's intrinsic size, so
+       the bar measured itself as if these cells were zero wide and painted out from under
+       them. min-width is the floor that survives whatever the basis resolves to. */
+    flex: none;
+    width: var(--yomi-cell);
+    min-width: var(--yomi-cell);
+    height: var(--yomi-cell);
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.12s ease-out;
+}
+
+/* Translate and auto are always offered; the other two only once there is something to
+   download or edit, and the script flips those to display:flex inline when that happens. */
+.yomi-action,
+.yomi-auto {
+    display: flex;
+}
+
+.yomi-download,
+.yomi-edit {
+    display: none;
+}
+
+.yomi-action:hover,
+.yomi-auto:hover,
+.yomi-download:hover,
+.yomi-edit:hover {
+    background-color: rgba(64, 64, 64, 0.5);
+}
+
+/* The icon files are all fill="#ffffff", which is what the dark bar wants - the filters that
+   used to flatten them to black were there for the white panel this replaced. Opacity carries
+   the muted/hover distinction on its own. */
+.yomi-action-icon,
+.yomi-auto-icon,
+.yomi-download-icon,
+.yomi-edit-icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.75;
+    transition: opacity 0.12s ease-out;
+}
+
+.yomi-action:hover .yomi-action-icon,
+.yomi-auto:hover .yomi-auto-icon,
+.yomi-download:hover .yomi-download-icon,
+.yomi-edit:hover .yomi-edit-icon {
+    opacity: 1;
+}
+
+/* Translate and revert on one button, which is why it is the only cell besides auto with an
+   on state: filled means a translation is on screen and a press takes it back off. The gate
+   icon still does the same thing on a device that can hover - this is the version of it that
+   says so, and on touch it is the only one, since a tap there only opens this panel. */
+.yomi-action-active {
+    background-color: #0891b2;
+}
+
+.yomi-action-active:hover {
+    background-color: #0e7490;
+}
+
+.yomi-action-active .yomi-action-icon {
+    opacity: 1;
+}
+
+.yomi-action-busy {
+    cursor: default;
+}
+
+.yomi-action-busy:hover {
+    background-color: transparent;
+}
+
+/* Auto is a toggle, and it was the one button whose on/off state the old design could not
+   show at all - everything was cyan all the time. The script already marks the icon while
+   auto is running, so the filled state is read from that rather than adding another class
+   for the same fact. Cyan-600 is the accent the rest of the UI uses for a chosen control.
+
+   The mark it uses is .yomi-rotating, which elsewhere means "this is working, spin it" -
+   still true of the edit button, but auto is a state rather than a task in progress, so the
+   spin is switched off here and the fill carries the meaning on its own. */
+.yomi-auto .yomi-rotating {
+    animation: none;
+}
+
+.yomi-auto:has(.yomi-rotating) {
+    background-color: #0891b2;
+}
+
+.yomi-auto:has(.yomi-rotating):hover {
+    background-color: #0e7490;
+}
+
+.yomi-auto:has(.yomi-rotating) .yomi-auto-icon {
+    opacity: 1;
+}
+
+.yomi-screen-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2147483646;
+    cursor: crosshair;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.yomi-screen-instructions {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    pointer-events: none;
+    z-index: 2147483647;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font: bold 30px Arial, Helvetica, sans-serif;
+    color: white;
+    box-sizing: border-box;
+}
+
+.yomi-screen-instructions-hint {
+    text-align: center;
+    font: bold 30px Arial, Helvetica, sans-serif;
+    color: coral;
+    font-size: medium;
+}
+
+.yomi-crop-rect {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 2147483646;
+    box-shadow: 0 0 0 max(100vw, 100vh) rgba(0, 0, 0, 0.7);
+    user-select: none;
+    touch-action: none;
+    box-sizing: border-box;
+}
+
+.yomi-resize-element {
+    border-top-width: 16px;
+    border-top-color: transparent;
+    border-top-style: solid;
+    border-right-width: 16px;
+    border-right-color: #60B7D3;
+    border-right-style: solid;
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    cursor: nwse-resize;
+}
+
+.yomi-crop-translate {
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    right: -27px;
+    top: -2px;
+    background-color: #60B7D3;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2147483647;
+}
+
+.yomi-crop-translate-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.yomi-crop-cancel {
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    right: -27px;
+    top: 23px;
+    background-color: #d36060;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2147483647;
+}
+
+.yomi-crop-cancel-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.yomi-cropped-image-wrapper {
+    position: absolute;
+    z-index: 2147483645;
+    cursor: grab;
+    outline: 2px solid #60B7D3;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.7)
+}
+
+.yomi-loading {
+    animation: yomi-spinning-anim 1s ease-in-out infinite;
+}
+
+.yomi-pulsing {
+    animation: yomi-pulsing-anim 1s ease-in-out infinite;
+}
+
+.yomi-rotating {
+    animation: yomi-spinning-anim 1s linear infinite;
+}
+
+.yomi-scaling {
+    transform: scale(1.1);
+}
+
+@keyframes yomi-spinning-anim {
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+@keyframes yomi-pulsing-anim {
+    0% {
+        transform: scale(0.95);
+    }
+
+    50% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(0.95);
+    }
+}
+
+#canvas-container {
+    justify-content: safe center;
+    align-items: safe center;
+}
+
+/* Only the add-settings popovers want the hex field to fill the row; elsewhere the input's own w-28 holds. */
+.clr-field:has([id^="hidden-"]) {
+    display: flex !important;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.clr-field [id^="hidden-"] {
+    flex-grow: 1;
+    width: 100%;
+}
+
+.clr-field input {
+    padding-right: 36px !important;
+}
+
+.clr-field button {
+    width: 22px !important;
+    height: 22px !important;
+    right: 5px !important;
+    border-radius: 4px !important;
+    border: 1px solid #d4d4d4 !important;
+}
+
+html.dark .clr-field button {
+    border-color: #525252 !important;
+}
+
+/* Scoped to the side panel's own content, not #side-panel (which also wraps the
+   always-full-size #side-panel-toggle chevron button as a sibling) or #canvas-wrapper
+   (a further sibling), so zoom here can't affect canvas hit-testing or shrink the toggle.
+
+   Width and height each get their own ramp so a short-but-wide laptop panel (a common
+   1366x768-class screen, whose actual viewport ends up shorter still once tabs/address bar
+   are subtracted) gets the same relief as a narrow-but-tall one. The height tiers are set
+   about 10% more zoomed out than their width counterparts rather than reusing the same
+   values, since a given pixel height doesn't cramp the panel's content by the same amount a
+   matching pixel width does - vertical space gets eaten by stacked rows/labels much faster
+   than horizontal space does.
+
+   All rules are ordered from least to most aggressive (by zoom value, not by which dimension
+   triggered them), since same-specificity CSS always applies the last matching rule - that
+   ordering is what guarantees a screen that's short but not narrow still ends up on the
+   correct (height-driven) tier instead of an earlier width rule it happens to also match.
+
+   Values and breakpoints are translate.css's, kept identical so the two can be diffed. The
+   .98 breakpoints are what stop a viewport at exactly 1024px or 640px from matching two
+   width tiers at once. !important is the one local addition: it is override strength for
+   sitting over an arbitrary host page, not a value. */
+#side-panel-content {
+    zoom: 1.0 !important;
+}
+
+@media (max-width: 1599.98px) {
+    #side-panel-content {
+        zoom: 0.95 !important;
+    }
+}
+
+@media (max-width: 1023.98px) {
+    #side-panel-content {
+        zoom: 0.90 !important;
+    }
+}
+
+@media (max-width: 639.98px) {
+    #side-panel-content {
+        zoom: 0.85 !important;
+    }
+}
+
+@media (max-height: 1024px) {
+    #side-panel-content {
+        zoom: 0.88 !important;
+    }
+}
+
+@media (max-height: 800px) {
+    #side-panel-content {
+        zoom: 0.82 !important;
+    }
+}
+
+@media (max-height: 650px) {
+    #side-panel-content {
+        zoom: 0.76 !important;
+    }
+}
+
+/* Mirrors translate.css's sidebar collapse (this build has no image browser); !important is
+   the one local addition, override strength for sitting over an arbitrary host page.
+
+   Width and the margin that hides it are one --panel-w, so they cancel exactly at any zoom
+   tier with no JS measuring anything. Every length here comes from the px Tailwind tokens
+   main.css pins, never rem: rem is the one unit a shadow root cannot isolate - it always
+   resolves against the host page's <html> - so a -24rem margin against this 384px panel left
+   a 144px strip of it on screen on any site using the 62.5%/10px trick. The 6 is the 1.5rem
+   gutter edit.html's own max-w-* asks for, in that px scale. That class and w-sm are inert
+   now, kept only so this change stays inside extension/dist.
+
+   #side-panel is then built to not care if the cancel is ever off anyway - it still is under
+   WebKit/Gecko, which scale a zoomed element's width but not its margin, over-collapsing by
+   width*(1-zoom). flex-end anchors #side-panel-toggle to the panel's end edge rather than
+   #side-panel-content's outer width, and min-width holds that edge at the chevron's own
+   margin-box width (w-7 less -mr-5, so 2 spacing units) once an over-collapse would pull it
+   negative. The chevron lands in the same place for any overshoot, instead of being dragged
+   out of the overlay's overflow-hidden box with the panel and stranding it. */
+#side-panel {
+    justify-content: flex-end !important;
+    min-width: calc(var(--spacing, 4px) * 2) !important;
+}
+
+#side-panel-content {
+    --panel-w: min(var(--container-sm, 384px), 100vw - var(--spacing, 4px) * 6);
+    width: var(--panel-w) !important;
+}
+
+#side-panel-content.sidebar-collapsed {
+    margin-left: calc(-1 * var(--panel-w)) !important;
+}
+
+/* The slider owns any touch that lands on it, start to finish. pan-y kept vertical scrolling live
+   alongside the drag, so a diagonal finger moved the thumb and scrolled the panel at the same
+   time; the cost of none is that you can no longer scroll the panel from on top of a slider. */
+.yomi-slider {
+    touch-action: none;
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.yomi-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #06b6d4;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background-color 0.12s ease;
+}
+
+:host(.dark) .yomi-slider::-webkit-slider-thumb,
+html.dark .yomi-slider::-webkit-slider-thumb {
+    border-color: #e5e5e5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.yomi-slider:hover::-webkit-slider-thumb,
+.yomi-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.12);
+    background: #08bcdc;
+    box-shadow: 0 0 0 2.5px rgba(6, 182, 212, 0.2), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+:host(.dark) .yomi-slider:hover::-webkit-slider-thumb,
+:host(.dark) .yomi-slider::-webkit-slider-thumb:hover,
+html.dark .yomi-slider:hover::-webkit-slider-thumb,
+html.dark .yomi-slider::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 2.5px rgba(6, 182, 212, 0.28), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.yomi-slider:active::-webkit-slider-thumb,
+.yomi-slider::-webkit-slider-thumb:active {
+    transform: scale(1.18);
+    background: #0891b2;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.28), 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: grabbing;
+}
+
+:host(.dark) .yomi-slider:active::-webkit-slider-thumb,
+:host(.dark) .yomi-slider::-webkit-slider-thumb:active,
+html.dark .yomi-slider:active::-webkit-slider-thumb,
+html.dark .yomi-slider::-webkit-slider-thumb:active {
+    background: #06b6d4;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.38), 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+.yomi-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #06b6d4;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background-color 0.12s ease;
+}
+
+:host(.dark) .yomi-slider::-moz-range-thumb,
+html.dark .yomi-slider::-moz-range-thumb {
+    border-color: #e5e5e5;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.yomi-slider:hover::-moz-range-thumb,
+.yomi-slider::-moz-range-thumb:hover {
+    transform: scale(1.12);
+    background: #08bcdc;
+    box-shadow: 0 0 0 2.5px rgba(6, 182, 212, 0.2), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+:host(.dark) .yomi-slider:hover::-moz-range-thumb,
+:host(.dark) .yomi-slider::-moz-range-thumb:hover,
+html.dark .yomi-slider:hover::-moz-range-thumb,
+html.dark .yomi-slider::-moz-range-thumb:hover {
+    box-shadow: 0 0 0 2.5px rgba(6, 182, 212, 0.28), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.yomi-slider:active::-moz-range-thumb,
+.yomi-slider::-moz-range-thumb:active {
+    transform: scale(1.18);
+    background: #0891b2;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.28), 0 1px 4px rgba(0, 0, 0, 0.25);
+    cursor: grabbing;
+}
+
+:host(.dark) .yomi-slider:active::-moz-range-thumb,
+:host(.dark) .yomi-slider::-moz-range-thumb:active,
+html.dark .yomi-slider:active::-moz-range-thumb,
+html.dark .yomi-slider::-moz-range-thumb:active {
+    background: #06b6d4;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.38), 0 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Scrubbable/typeable slider value boxes (see attachScrubInput() in content.js) - a
+   bordered box sitting to the right of its slider. Its original <span id="X-value">
+   sibling is still there (hidden via the "hidden" class in the HTML) and still updated by
+   that slider's own existing logic, untouched by this - this box mirrors its text via a
+   MutationObserver rather than reimplementing any of that per-slider formatting. */
+.yomi-scrub-box {
+    cursor: ew-resize;
+    touch-action: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: background-color 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.yomi-scrub-box:focus {
+    cursor: text;
+    outline: none;
+    border-color: #06b6d4 !important;
+    box-shadow: 0 0 0 1px #06b6d4;
+    background-color: #ffffff;
+    color: #171717;
+}
+
+:host(.dark) .yomi-scrub-box:focus,
+html.dark .yomi-scrub-box:focus {
+    background-color: rgba(23, 23, 23, 0.8);
+    color: #f5f5f5;
+}
+
+.yomi-scrub-box[readonly] {
+    caret-color: transparent;
+}
+
+/* Mobile/narrow-window "peek through the sidebar" - see startSidebarPeek()/endSidebarPeek()
+   in content.js. Below the xl breakpoint the sidebar is a full overlay sitting on top of the
+   canvas, so adjusting a slider blind is unusable. While one is active, #settings' own opaque
+   background is switched to fully transparent (background-color, not opacity - an opacity
+   change would dim its descendants too, including the control still being used) and every
+   OTHER branch of the panel fades via .sidebar-peek-sibling-dim, revealing the canvas through
+   the gaps. The active control's own branch is never touched by either rule, so it's untouched
+   in the DOM throughout - critical for range inputs, since re-parenting one mid-drag breaks the
+   browser's native drag-tracking on it. */
+#settings.sidebar-peek-dimmed {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+.sidebar-peek-sibling-dim {
+    opacity: 0.1;
+    transition: opacity 0.15s ease-out;
+}
+
+/* #side-panel-content's drop-shadow (see SIDEBAR_SHADOW_CLASSES in content.js) is a
+   box-shadow, which paints around the panel's own box regardless of what's transparent inside
+   it - #settings going see-through doesn't touch it, so it has to be suppressed separately. */
+#side-panel-content.sidebar-peek-hide-shadow {
+    box-shadow: none !important;
+}
+
+/* #edit-settings' scrollbar THUMB is deliberately opaque outside of peek mode - that's the
+   whole point of a scrollbar thumb, so it stays legible for normal use. #edit-settings is
+   always an ancestor of whichever control is active during peek (every slider lives inside
+   it), so it never receives .sidebar-peek-sibling-dim like an unrelated sibling would - it
+   needs its own explicit override here instead. */
+@supports not selector(::-webkit-scrollbar) {
+    #settings.sidebar-peek-dimmed #edit-settings {
+        scrollbar-color: transparent transparent;
+    }
+}
+
+#settings.sidebar-peek-dimmed #edit-settings::-webkit-scrollbar-thumb {
+    background-color: transparent;
+}
+
+/* #tools is just a border-top divider between the mode tabs and the tool-specific settings
+   below it - like #edit-settings, it's always an ancestor of whichever control is active
+   during peek, so it's never dimmed as a sibling and needs its own override. */
+#settings.sidebar-peek-dimmed #tools {
+    border-color: transparent;
+}
+
+/* The field actually being adjusted (label + icon + slider + value) gets a legible backing
+   plate, since without one its usually-muted label/icon colors can be hard to read against
+   whatever's on the canvas behind the now-transparent panel. Background-color only, no
+   padding - padding would shift this element's box relative to its flex siblings. */
+.sidebar-peek-active-field {
+    background-color: rgba(255, 255, 255, 0.92);
+    border-radius: 6px;
+    transition: background-color 0.15s ease-out;
+}
+
+/* Yomi's own theme class, not prefers-color-scheme - the panel is dark whenever the user set
+   dark, regardless of what the OS is doing. Matches translate.css's html.dark rule. */
+:host(.dark) .sidebar-peek-active-field,
+html.dark .sidebar-peek-active-field {
+    background-color: rgba(38, 38, 38, 0.92);
+}
+
+/* An expanded <details> brightens its own summary, matching how the button-driven
+   collapsible sections highlight their header when open. Written as plain CSS rather than
+   leaning on group-open:* utilities because tailwind.css is a committed build artifact
+   here and group-open:text-neutral-800 isn't in it - the dark half is
+   (group-open:dark:text-neutral-100), but relying on half a pair would only work in one
+   theme. Both dark selectors: the edit UI renders in its own iframe, where the theme class is
+   on <html> exactly as on the website, while the shadow root still carries it on the host. */
+details[open] > summary {
+    color: #262626;
+}
+
+:host(.dark) details[open] > summary,
+html.dark details[open] > summary {
+    color: #f5f5f5;
+}
+
+/* Optical vertical centering for action buttons */
+#edit-actions button > * {
+    transform: translateY(1px);
+}
+
+/* Optical vertical centering for layer order buttons */
+#image-layer-order-group button > * {
+    transform: translateY(-1px);
+}
+/* Keyboard cursor inside an open custom dropdown (see setupDropdownArrowKeys). Kept
+   separate from the selected-row highlight so the two states can be told apart: the
+   cyan fill is "this is the current value", this inset ring is "this is where the
+   arrow keys are". Inset rather than an outline so it isn't clipped by the list's
+   own overflow, and drawn with the same cyan the scrub boxes use for focus. */
+.dropdown-active-option {
+    box-shadow: inset 0 0 0 2px #06b6d4;
+}
+
+/* Font rows show their pin/folder/delete buttons only under the pointer or keyboard cursor.
+   Touch has no hover to reveal them, so there they stay visible. */
+@media (hover: hover) {
+    .font-row-actions {
+        opacity: 0;
+        transition: opacity 150ms;
+    }
+
+    .font-row:hover .font-row-actions,
+    .font-row.dropdown-active-option .font-row-actions {
+        opacity: 1;
+    }
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────────────
+   Ported from translate.css so every scrollable surface Yomi puts on the page - the edit
+   sidebar, the dropdown lists, the textareas, and every modal (edit, download, details, find
+   & replace, save texts) - matches the website instead of each inheriting whatever the host
+   page happens to style its scrollbars as.
+
+   This file is only ever appended to the shadow root (content.js does yomiDOM.appendChild on
+   it, and the manifest declares no content_scripts CSS), so these bare `*` and
+   `::-webkit-scrollbar` selectors reach nothing outside the overlay - the page's own
+   scrollbars, and any it styles for its own elements, are untouched. That scoping is the whole
+   reason this can be written as broadly as the website writes it.
+
+   Both dark selectors: :host(.dark) for the shadow root, html.dark for the edit iframe.
+
+   The two standard properties are gated because from Chrome 121 they take precedence over the
+   ::-webkit-scrollbar rules below and hand the element back to the browser's own scrollbar -
+   which on Windows carries stepper arrows that ::-webkit-scrollbar-button then can no longer
+   hide. Firefox honours nothing but those two, so it is the only engine that should see them,
+   and auto rather than thin because Firefox cannot inset a thumb the way background-clip does
+   for the webkit path - thin left the bar hugging the content with no gutter at all.
+
+   None of this reaches Firefox's overlay scrollbars, which follow the OS "automatically hide
+   scroll bars" setting: they occupy no layout width at all and paint over whatever is beneath
+   them. scrollbar-gutter is specified as a no-op for those, so the gutter is reserved by hand
+   below. */
+@supports not selector(::-webkit-scrollbar) {
+    *, *::before, *::after {
+        scrollbar-width: auto;
+        scrollbar-color: #d4d4d4 transparent;
+    }
+
+    :host(.dark) *, :host(.dark) *::before, :host(.dark) *::after,
+    html.dark *, html.dark *::before, html.dark *::after {
+        scrollbar-color: #525252 transparent;
+    }
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 10px track carrying a 6px thumb: the 2px transparent border plus background-clip keeps the
+   thumb off the track edges. Every other thumb rule sets background-color, not the background
+   shorthand - the shorthand resets background-clip and the padding would vanish on hover. */
+::-webkit-scrollbar-thumb {
+    background-color: #d4d4d4;
+    border-radius: 100vh;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #a3a3a3;
+}
+
+:host(.dark) ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb {
+    background-color: #525252;
+}
+
+:host(.dark) ::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #737373;
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox's overlay scrollbar takes no width (measured: clientWidth === offsetWidth), so it
+   lands on top of the controls at the panel's right edge - the tool row loses its last button
+   under the bar as it widens on hover. Reserved by hand, since scrollbar-gutter cannot.
+   Overrides the pr-1 / max-xl:pr-3.5 the markup carries, at both breakpoints. */
+@supports not selector(::-webkit-scrollbar) {
+    #edit-settings {
+        padding-right: 1rem;
+    }
+}
+
+/* Styling ::-webkit-scrollbar at all makes Chromium draw its stepper buttons, which the
+   native scrollbar leaves off - so every scroller grew a tiny arrow at each end. */
+::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* ─── Pill switch hover states ───────────────────────────────────────────────
+   Ported from translate.css, which is where the pill markup in edit.html comes from. Tailwind
+   covers the checked/unchecked colours; this is only the hover shading, which has no variant.
+
+   Both dark selectors, for the same reason as the scrollbars above. */
+.yomi-pill-switch {
+    transition: background-color 0.15s ease-out;
+}
+
+label:hover .yomi-pill-switch:not(.peer-checked),
+.peer:not(:checked) ~ .yomi-pill-switch:hover,
+label:hover .peer:not(:checked) ~ .yomi-pill-switch,
+.peer:not(:checked):hover ~ .yomi-pill-switch {
+    background-color: #b5b5b5;
+}
+
+:host(.dark) label:hover .yomi-pill-switch:not(.peer-checked),
+:host(.dark) .peer:not(:checked) ~ .yomi-pill-switch:hover,
+:host(.dark) label:hover .peer:not(:checked) ~ .yomi-pill-switch,
+:host(.dark) .peer:not(:checked):hover ~ .yomi-pill-switch,
+html.dark label:hover .yomi-pill-switch:not(.peer-checked),
+html.dark .peer:not(:checked) ~ .yomi-pill-switch:hover,
+html.dark label:hover .peer:not(:checked) ~ .yomi-pill-switch,
+html.dark .peer:not(:checked):hover ~ .yomi-pill-switch {
+    background-color: #525252;
+}
+
+label:hover .peer:checked ~ .yomi-pill-switch,
+.peer:checked:hover ~ .yomi-pill-switch,
+.peer:checked ~ .yomi-pill-switch:hover {
+    background-color: #06b6d4 !important;
+}
+
+:host(.dark) label:hover .peer:checked ~ .yomi-pill-switch,
+:host(.dark) .peer:checked:hover ~ .yomi-pill-switch,
+:host(.dark) .peer:checked ~ .yomi-pill-switch:hover,
+html.dark label:hover .peer:checked ~ .yomi-pill-switch,
+html.dark .peer:checked:hover ~ .yomi-pill-switch,
+html.dark .peer:checked ~ .yomi-pill-switch:hover {
+    background-color: #06b6d4 !important;
+}

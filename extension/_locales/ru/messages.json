@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — ИИ-переводчик манги, манхвы и комиксов",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "Переводите мангу, манхву и вебтуны прямо на странице с помощью ИИ. Редактируйте результат на месте и скачивайте главы целиком в ZIP.",
+        "description": "Store listing summary"
+    }
+}

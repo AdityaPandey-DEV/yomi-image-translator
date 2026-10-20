@@ -1,0 +1,150 @@
+<!-- Download options modal.
+     Injected into the shadow root on first use by ensureDownloadModal() in content.js, and
+     kept there afterwards. Lives in its own file rather than in edit.html because the
+     download button sits on the always-present image overlay, while edit.html is only
+     fetched when edit mode opens and is removed again when it closes. -->
+<div id="yomi-download-modal"
+  class="fixed inset-0 z-[2147483647] !hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-200">
+  <div role="dialog" aria-modal="true" aria-labelledby="yomi-download-modal-title"
+    class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden transform scale-95 transition-transform duration-200">
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/40">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-neutral-600 dark:text-neutral-300 shrink-0" xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path
+            d="M13 10H18L12 16L6 10H11V3H13V10ZM4 19H20V12H22V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V12H4V19Z">
+          </path>
+        </svg>
+        <h3 id="yomi-download-modal-title" class="text-base font-semibold text-neutral-800 dark:text-neutral-100">
+          Download</h3>
+      </div>
+      <button id="yomi-download-modal-close" type="button" aria-label="Close"
+        class="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer focus:outline-none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="p-6 relative">
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-4">Choose what to download.</p>
+      <div id="yomi-download-progress"
+        class="!hidden absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-white dark:bg-neutral-800">
+        <svg class="animate-spin w-7 h-7 text-cyan-600 dark:text-cyan-400" xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" opacity="0.25"></circle>
+          <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+        <p id="yomi-download-progress-label" class="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+          Preparing...</p>
+        <p id="yomi-download-progress-count" class="text-xs text-neutral-500 dark:text-neutral-400"></p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="yomi-download-single" type="button" title="Download this image"
+          class="flex flex-col items-center justify-center gap-1.5 py-4 px-3 bg-neutral-50 dark:bg-neutral-900/50 text-neutral-800 dark:text-neutral-100 border border-neutral-200 dark:border-neutral-700 rounded-lg cursor-pointer text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-600 duration-100 ease-in-out">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"
+            aria-hidden="true">
+            <path
+              d="M2.9918 21C2.44405 21 2 20.5551 2 20.0066V3.9934C2 3.44476 2.45531 3 2.9918 3H21.0082C21.556 3 22 3.44495 22 3.9934V20.0066C22 20.5552 21.5447 21 21.0082 21H2.9918ZM20 15V5H4V19L14 9L20 15ZM20 17.8284L14 11.8284L6.82843 19H20V17.8284ZM8 11C6.89543 11 6 10.1046 6 9C6 7.89543 6.89543 7 8 7C9.10457 7 10 7.89543 10 9C10 10.1046 9.10457 11 8 11Z">
+            </path>
+          </svg>
+          <span class="font-medium">This Image</span>
+          <span class="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 text-center">Just the one you
+            clicked</span>
+        </button>
+        <!-- Every card that produces more than one image carries its own copy of the toggle, so
+             each one states the filter that applies to it rather than deferring to a control
+             somewhere else. They are kept in sync by wireDownloadModal(): it is one filter shown
+             in three places, not three independent settings - otherwise flipping the switch on
+             one card and then clicking a different one would quietly ignore it.
+
+             The switch cannot go INSIDE the button - a control nested in a button is invalid, and
+             every click on it would also start the download - so each card is a plain container
+             holding the button and the toggle as siblings. The border and background live on the
+             container; hover stays on the button alone, which keeps the toggle from lighting up
+             the card as if it were the thing about to be clicked. -->
+        <div
+          class="flex flex-col bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+          <button id="yomi-download-zip" type="button" title="Download all images as a ZIP archive"
+            aria-describedby="yomi-download-zip-hint"
+            class="flex flex-col items-center justify-center gap-1.5 flex-1 py-4 px-3 text-neutral-800 dark:text-neutral-100 cursor-pointer text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 duration-100 ease-in-out">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"
+              aria-hidden="true">
+              <path
+                d="M21 5C21.5523 5 22 5.44772 22 6V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3H10.4142L12.4142 5H16V7H18V5H21ZM18 13H16V15H14V18H18V13ZM16 11H14V13H16V11ZM18 9H16V11H18V9ZM16 7H14V9H16V7Z">
+              </path>
+            </svg>
+            <span class="font-medium">All Images</span>
+            <span id="yomi-download-zip-hint"
+              class="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 text-center">ZIP archive</span>
+          </button>
+          <!-- A footer strip rather than loose content at the bottom of the card: without the rule
+               and the recessed tint the button's hover ran straight into the pill, which read as
+               one hovered block containing a stray control. Same divider-over-tinted-band the
+               modal header uses. The hover classes are added by openDownloadModal rather than
+               written here, because they belong to the row only while it can actually be
+               switched - the same place it decides on the cursor and the dimming. -->
+          <label id="yomi-download-zip-new-only-row" data-yomi-new-only-row
+            class="flex items-center justify-center gap-2 px-3 py-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-100/70 dark:bg-neutral-900/40 duration-100 ease-in-out cursor-pointer">
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" id="yomi-download-zip-new-only" data-yomi-new-only class="sr-only peer">
+              <span
+                class="yomi-pill-switch w-7 h-4 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-neutral-50 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-50 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:after:border-neutral-600 peer-checked:bg-cyan-600 dark:peer-checked:bg-cyan-600 dark:peer-checked:after:border-white dark:after:bg-white"></span>
+            </span>
+            <span class="text-[11px] leading-snug text-neutral-600 dark:text-neutral-300">Only new translations</span>
+          </label>
+        </div>
+        <div
+          class="flex flex-col bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+          <button id="yomi-download-pdf" type="button" title="Download all images as a PDF"
+            aria-describedby="yomi-download-pdf-hint" class="flex flex-col items-center justify-center gap-1.5 flex-1 py-4 px-3 text-neutral-800 dark:text-neutral-100 cursor-pointer text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 duration-100 ease-in-out">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7"
+              aria-hidden="true">
+              <path
+                d="M3.9985 2C3.44749 2 3 2.44405 3 2.9918V21.0082C3 21.5447 3.44476 22 3.9934 22H20.0066C20.5551 22 21 21.5489 21 20.9925L20.9997 7L16 2H3.9985ZM10.5 7.5H12.5C12.5 9.98994 14.6436 12.6604 17.3162 13.5513L16.8586 15.49C13.7234 15.0421 10.4821 16.3804 7.5547 18.3321L6.3753 16.7191C7.46149 15.8502 8.50293 14.3757 9.27499 12.6534C10.0443 10.9373 10.5 9.07749 10.5 7.5ZM11.1 13.4716C11.3673 12.8752 11.6043 12.2563 11.8037 11.6285C12.2754 12.3531 12.8553 13.0182 13.5102 13.5953C12.5284 13.7711 11.5666 14.0596 10.6353 14.4276C10.8 14.1143 10.9551 13.7948 11.1 13.4716Z">
+              </path>
+            </svg>
+            <span class="font-medium">PDF</span>
+            <span id="yomi-download-pdf-hint"
+              class="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 text-center">One document</span>
+          </button>
+          <label id="yomi-download-pdf-new-only-row" data-yomi-new-only-row
+            class="flex items-center justify-center gap-2 px-3 py-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-100/70 dark:bg-neutral-900/40 duration-100 ease-in-out cursor-pointer">
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" id="yomi-download-pdf-new-only" data-yomi-new-only class="sr-only peer">
+              <span
+                class="yomi-pill-switch w-7 h-4 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-neutral-50 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-50 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:after:border-neutral-600 peer-checked:bg-cyan-600 dark:peer-checked:bg-cyan-600 dark:peer-checked:after:border-white dark:after:bg-white"></span>
+            </span>
+            <span class="text-[11px] leading-snug text-neutral-600 dark:text-neutral-300">Only new translations</span>
+          </label>
+        </div>
+        <!-- Not an image download at all: a project archive that reopens in the workspace on the
+             site, edits and all. Sits in the same grid as an equal option because that is the
+             shape the website's download modal already has. -->
+        <div
+          class="flex flex-col bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+          <button id="yomi-download-project" type="button"
+            title="Download a Yomi project file that reopens in the workspace on the site"
+            aria-describedby="yomi-download-project-hint" class="flex flex-col items-center justify-center gap-1.5 flex-1 py-4 px-3 text-neutral-800 dark:text-neutral-100 cursor-pointer text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 duration-100 ease-in-out">
+            <!-- src is assigned in ensureDownloadModal(): a relative path in here would resolve
+                 against the host page, not the extension. Same as the menu's logo. -->
+            <img id="yomi-download-project-icon" class="w-7 h-7" alt="" aria-hidden="true">
+            <span class="font-medium">YOMI</span>
+            <span id="yomi-download-project-hint"
+              class="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 text-center">Project file</span>
+          </button>
+          <label id="yomi-download-project-new-only-row" data-yomi-new-only-row
+            class="flex items-center justify-center gap-2 px-3 py-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-100/70 dark:bg-neutral-900/40 duration-100 ease-in-out cursor-pointer">
+            <span class="relative inline-flex items-center shrink-0">
+              <input type="checkbox" id="yomi-download-project-new-only" data-yomi-new-only class="sr-only peer">
+              <span
+                class="yomi-pill-switch w-7 h-4 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-neutral-50 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-50 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:after:border-neutral-600 peer-checked:bg-cyan-600 dark:peer-checked:bg-cyan-600 dark:peer-checked:after:border-white dark:after:bg-white"></span>
+            </span>
+            <span class="text-[11px] leading-snug text-neutral-600 dark:text-neutral-300">Only new translations</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

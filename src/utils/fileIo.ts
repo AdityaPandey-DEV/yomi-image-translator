@@ -260,7 +260,7 @@ export function exportYomiProject(pages: PageImage[], config: BYOKConfig) {
  * Exports dialogue scripts for proofreading (Yomi's Export Texts feature)
  */
 export function exportDialogueScript(pages: PageImage[]) {
-  let content = `=== TORII TRANSLATOR DIALOGUE SCRIPT ===\nGenerated: ${new Date().toLocaleString()}\n\n`;
+  let content = `=== YOMI TRANSLATOR DIALOGUE SCRIPT ===\nGenerated: ${new Date().toLocaleString()}\n\n`;
 
   pages.forEach((page, pIdx) => {
     content += `----------------------------------------\n`;

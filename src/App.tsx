@@ -8,6 +8,8 @@ import { HelpModal } from './components/HelpModal';
 import { ExtensionModal } from './components/ExtensionModal';
 import { ReadingMode } from './components/ReadingMode';
 import { ScriptEditor } from './components/ScriptEditor';
+import { SignInPage } from './components/SignInPage';
+import { SupportPage } from './components/SupportPages';
 import {
   PageImage,
   TextObject,
@@ -24,7 +26,7 @@ import { UploadCloud, Sparkles, FolderArchive, ArrowRight } from 'lucide-react';
 const DEFAULT_BYOK_CONFIG: BYOKConfig = {
   activeProvider: 'google',
   googleApiKey: '',
-  googleModel: 'gemini-2.0-flash',
+  googleModel: 'gemini-3.8-flash',
   openaiApiKey: '',
   openaiModel: 'gpt-4o',
   anthropicApiKey: '',
@@ -50,12 +52,46 @@ const DEFAULT_BYOK_CONFIG: BYOKConfig = {
 };
 
 export function App() {
+  // Check routes for extension support and legal links
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (pathname === '/signin' || pathname === '/login') {
+    return <SignInPage />;
+  }
+  if (pathname === '/updates') {
+    return <SupportPage pageType="updates" />;
+  }
+  if (pathname === '/feedback') {
+    return <SupportPage pageType="feedback" />;
+  }
+  if (pathname === '/privacy') {
+    return <SupportPage pageType="privacy" />;
+  }
+  if (pathname === '/terms') {
+    return <SupportPage pageType="terms" />;
+  }
+  if (pathname === '/cookies') {
+    return <SupportPage pageType="cookies" />;
+  }
+  if (pathname === '/account') {
+    return <SupportPage pageType="account" />;
+  }
+  if (pathname === '/translate') {
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/');
+    }
+  }
+
   // Theme & Modes
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentTab, setCurrentTab] = useState<'studio' | 'reader' | 'script'>('studio');
   const [viewMode, setViewMode] = useState<ViewMode>('translated');
   const [activeTool, setActiveTool] = useState<EditorTool>('select');
   const [brushSize, setBrushSize] = useState(16);
+
+  // Extension Integration State
+  const [isExtensionLinked, setIsExtensionLinked] = useState(() => {
+    return typeof document !== 'undefined' && document.documentElement.hasAttribute('data-yomi-extension');
+  });
 
   // BYOK Configuration from localStorage
   const [byokConfig, setByokConfig] = useState<BYOKConfig>(() => {
@@ -88,11 +124,48 @@ export function App() {
   const selectedBubble =
     currentPage?.textObjects.find(b => b.id === selectedBubbleId) || null;
 
-  // Persist BYOK Config to localStorage
+  // Extension Discovery & Bidirectional Sync Listeners
+  useEffect(() => {
+    const handleExtensionReady = () => setIsExtensionLinked(true);
+    const handleMessage = (e: MessageEvent) => {
+      if (!e.data || typeof e.data !== 'object') return;
+      if (e.data.type === 'yomi-extension-synced' || e.data.type === 'yomi-extension-state' || e.data.type === 'yomi-extension-auth-ack') {
+        setIsExtensionLinked(true);
+      }
+    };
+
+    window.addEventListener('yomi-extension-ready', handleExtensionReady);
+    window.addEventListener('message', handleMessage);
+
+    // Initial attribute check & ping extension
+    if (document.documentElement.hasAttribute('data-yomi-extension')) {
+      setIsExtensionLinked(true);
+    }
+    window.postMessage({ type: 'yomi-request-extension-state' }, '*');
+
+    return () => {
+      window.removeEventListener('yomi-extension-ready', handleExtensionReady);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // Persist BYOK Config to localStorage & Sync to Extension
   const updateByokConfig = (updated: Partial<BYOKConfig>) => {
     setByokConfig(prev => {
       const next = { ...prev, ...updated };
       localStorage.setItem('yomi_byok_config', JSON.stringify(next));
+
+      // Seamlessly sync to Yomi extension
+      if (typeof window !== 'undefined') {
+        window.postMessage({
+          type: 'yomi-sync-to-extension',
+          googleApiKey: next.googleApiKey,
+          googleModel: next.googleModel,
+          targetLanguage: next.targetLanguage,
+          customPrompt: next.customPrompt,
+        }, '*');
+      }
+
       return next;
     });
   };

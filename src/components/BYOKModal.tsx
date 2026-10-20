@@ -79,6 +79,49 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Privacy & Key Storage Mode Selector */}
+          <div className="p-4 bg-neutral-950 rounded-xl border border-neutral-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                Key Privacy & Storage Options
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
+                100% Free
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {/* Option 1: Private (No Login) */}
+              <div className="p-3 rounded-lg border border-orange-500/40 bg-orange-500/5 space-y-1">
+                <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                  🔒 Option 1: Private (No Login)
+                </span>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  Save keys locally in this browser. No account or email needed. Translates free directly from your device.
+                </p>
+              </div>
+
+              {/* Option 2: Encrypted Cloud Vault */}
+              <div className="p-3 rounded-lg border border-neutral-800 bg-neutral-900/60 hover:border-neutral-700 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                    🔐 Option 2: Login Once (Encrypted)
+                  </span>
+                  <a
+                    href="/signin"
+                    className="text-[10px] font-bold text-blue-400 hover:underline"
+                  >
+                    Sign In ↗
+                  </a>
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-snug">
+                  Login once. Keys are AES-256 encrypted so you only sign in later to restore and use your keys everywhere.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Active Provider Selector */}
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-2">
@@ -158,9 +201,11 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest & Best)</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-3.8-flash">Gemini 3.8 Flash (Latest Model - High Quality & Multimodal)</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (500 RPD, 15 RPM - High Quota & Fast)</option>
+                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (500 RPD, 15 RPM - Ultra Fast)</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (20 RPD - Low Free Limit)</option>
+                    <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (20 RPD - Low Free Limit)</option>
                   </select>
                 </div>
               </div>

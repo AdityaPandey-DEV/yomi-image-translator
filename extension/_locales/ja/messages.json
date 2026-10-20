@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — AI漫画・マンファ・ウェブトゥーン翻訳",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "漫画、マンファ、ウェブトゥーンをページ上でそのままAI翻訳。翻訳結果はその場で編集でき、章ごとZIPでまとめてダウンロードできます。",
+        "description": "Store listing summary"
+    }
+}

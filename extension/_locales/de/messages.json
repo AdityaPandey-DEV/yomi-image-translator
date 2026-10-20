@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — KI-Übersetzer für Manga, Manhwa & Comics",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "Übersetze Manga, Manhwa und Webtoons mit KI direkt auf der Seite. Bearbeite das Ergebnis vor Ort und lade Kapitel als ZIP herunter.",
+        "description": "Store listing summary"
+    }
+}

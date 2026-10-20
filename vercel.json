@@ -1,4 +1,5 @@
 {
+  "name": "yomi-translator",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",

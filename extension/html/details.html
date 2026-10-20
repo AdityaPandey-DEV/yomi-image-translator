@@ -1,0 +1,127 @@
+<!--
+  Translation details, ported from the website's translation-details-modal.
+
+  Its own file for the same reason download.html is: it is ordinary layout, far easier to read
+  and adjust as markup than as a template literal inside a 19k-line script, and it cannot live in
+  edit.html - that file is only fetched when edit mode opens and removed when it closes, while the
+  credits chip this hangs off sits on the always-present image overlay.
+
+  IDs are yomi-prefixed, like download.html and unlike edit.html, because this markup shares the
+  shadow root with edit.html for as long as an edit session is open.
+-->
+<div id="yomi-details-modal"
+  class="fixed inset-0 z-[2147483647] !hidden flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-200">
+  <div role="dialog" aria-modal="true" aria-labelledby="yomi-details-modal-title"
+    class="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-600 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden transform scale-95 transition-transform duration-200">
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/40">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-cyan-600 dark:text-cyan-400 shrink-0" xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM11 11V17H13V11H11ZM11 7V9H13V7H11Z">
+          </path>
+        </svg>
+        <h3 id="yomi-details-modal-title" class="text-base font-semibold text-neutral-800 dark:text-neutral-100">Details
+        </h3>
+      </div>
+      <button id="yomi-details-modal-close" type="button" aria-label="Close"
+        class="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer focus:outline-none">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="yomi-details-body" class="p-5 flex flex-col gap-5 max-h-[70vh] overflow-y-auto">
+      <!-- Hero. The two numbers anyone actually opened this panel for, set far larger than
+           anything below them so the eye lands here first. JS fills all of these. -->
+      <div id="yomi-details-hero"
+        class="shrink-0 rounded-xl bg-neutral-100 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+        <div class="flex items-stretch">
+          <div class="flex flex-col gap-1 flex-1 min-w-0 px-4 py-3">
+            <span id="yomi-details-cost-label"
+              class="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+              Credits used
+            </span>
+            <span id="yomi-details-credits"
+              class="text-2xl font-bold leading-none tabular-nums text-neutral-900 dark:text-neutral-50 truncate">--</span>
+            <span id="yomi-details-credits-breakdown"
+              class="text-[11px] leading-snug text-neutral-500 dark:text-neutral-400"></span>
+          </div>
+          <div id="yomi-details-total-cell"
+            class="flex flex-col gap-1 flex-1 min-w-0 px-4 py-3 border-l border-neutral-200 dark:border-neutral-700">
+            <span
+              class="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 dark:text-neutral-400 truncate">
+              Total time
+            </span>
+            <span id="yomi-details-total-time"
+              class="text-2xl font-bold leading-none tabular-nums text-neutral-900 dark:text-neutral-50 truncate">--</span>
+            <span id="yomi-details-time-breakdown"
+              class="text-[11px] text-neutral-500 dark:text-neutral-400 truncate"></span>
+          </div>
+        </div>
+        <!-- Full width of its own: model names run long enough to truncate in half this card. -->
+        <div id="yomi-details-model-cell"
+          class="flex items-center gap-2 px-4 py-2 min-w-0 border-t border-neutral-200 dark:border-neutral-700">
+          <span
+            class="text-[10px] uppercase font-semibold tracking-wider text-neutral-500 dark:text-neutral-400 shrink-0">
+            Chosen Model
+          </span>
+          <span id="yomi-details-model" class="text-xs font-mono text-neutral-700 dark:text-neutral-200 truncate"></span>
+        </div>
+      </div>
+
+      <div id="yomi-details-fallback-row"
+        class="!hidden shrink-0 flex-col gap-1 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-neutral-700 dark:text-neutral-200 min-w-0">
+        <span class="text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">Fallback</span>
+        <div>Your chosen model could not complete this translation, so <span id="yomi-details-fallback-model"
+            class="font-semibold break-words"></span> was used instead.</div>
+        <div class="text-xs text-neutral-500 dark:text-neutral-400">Reason: <span id="yomi-details-fallback-reason"
+            class="font-mono break-words border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-900 rounded-lg p-0.5 px-1"></span>
+        </div>
+      </div>
+
+      <!-- Every metadata field is optional, so these sections are built in JS and simply do not
+           appear when the server had nothing to report. -->
+      <div id="yomi-details-stats" class="shrink-0 flex flex-col gap-5"></div>
+
+      <!-- Reasoning and context are walls of prose next to a panel of numbers. Both scroll inside
+           their own box rather than collapsing: whether there is anything here at all already
+           depends on the request, which is enough conditionality for one panel. -->
+      <div id="yomi-details-reasoning-row" class="!hidden shrink-0 flex-col gap-2 min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <span
+            class="text-[10px] uppercase font-bold tracking-wider text-neutral-400 dark:text-neutral-500 shrink-0">Reasoning</span>
+          <span class="flex-1 h-[2px] bg-neutral-200 dark:bg-neutral-700"></span>
+        </div>
+        <div id="yomi-details-reasoning"
+          class="text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-950/60 rounded-lg p-3 max-h-64 overflow-y-auto min-w-0">
+        </div>
+      </div>
+
+      <!-- Only present when context sharing was on for this image. -->
+      <div id="yomi-details-context-row" class="!hidden shrink-0 flex-col gap-2 min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-[10px] uppercase font-bold tracking-wider text-neutral-400 dark:text-neutral-500 shrink-0">Shared
+            context</span>
+          <span class="flex-1 h-[2px] bg-neutral-200 dark:bg-neutral-700"></span>
+        </div>
+        <div id="yomi-details-context"
+          class="text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-950/60 rounded-lg p-3 max-h-64 overflow-y-auto min-w-0">
+        </div>
+      </div>
+
+      <p id="yomi-details-empty" class="!hidden shrink-0 text-sm text-neutral-500 dark:text-neutral-400">
+        No extra details were recorded for this image.
+      </p>
+
+      <div class="shrink-0 flex justify-end gap-2">
+        <button id="yomi-details-close" type="button"
+          class="py-2 px-4 text-sm font-medium rounded-lg bg-neutral-200/60 hover:bg-neutral-200 dark:bg-neutral-700/60 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-100 duration-100 ease-in-out cursor-pointer border border-neutral-200 dark:border-neutral-600/60">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

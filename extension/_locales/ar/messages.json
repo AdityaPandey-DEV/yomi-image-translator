@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — مترجم مانجا ومانهوا بالذكاء الاصطناعي",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "ترجم المانجا والمانهوا والويبتون مباشرة على الصفحة بالذكاء الاصطناعي. عدّل الترجمة في مكانها ونزّل فصولًا كاملة بصيغة ZIP.",
+        "description": "Store listing summary"
+    }
+}

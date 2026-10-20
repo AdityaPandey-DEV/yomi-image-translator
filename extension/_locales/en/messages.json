@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Image Translator — AI Image Translator",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "Translate manga, manhwa and webtoons right on the page with AI. Edit the result in place and download whole chapters as a ZIP.",
+        "description": "Store listing summary"
+    }
+}

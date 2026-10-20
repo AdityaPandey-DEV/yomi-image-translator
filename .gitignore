@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
+torii.zip
+torii_raw.crx
+torii_crx_unpacked/
+scratch/
+*.zip

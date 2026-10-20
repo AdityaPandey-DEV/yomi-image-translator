@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — Dịch truyện tranh, manga, manhwa bằng AI",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "Dịch manga, manhwa và webtoon ngay trên trang bằng AI. Chỉnh sửa bản dịch tại chỗ và tải cả chương dưới dạng ZIP.",
+        "description": "Store listing summary"
+    }
+}

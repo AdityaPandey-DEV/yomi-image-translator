@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — Traduttore IA di manga, manhwa e fumetti",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "Traduci manga, manhwa e webtoon sulla pagina con l'IA. Modifica il risultato sul posto e scarica capitoli interi in ZIP.",
+        "description": "Store listing summary"
+    }
+}

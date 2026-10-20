@@ -1,40 +1,110 @@
 {
-  "manifest_version": 3,
-  "name": "Yomi Manga & Comic AI Translator",
-  "version": "2.1.0",
-  "description": "Translate raw Japanese, Korean, and Chinese manga, manhwa & comics on any website with comic fonts, bubble inpainting, and auto-scroll.",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "contextMenus"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_idle"
-    }
-  ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+    "manifest_version": 3,
+    "name": "__MSG_extName__",
+    "description": "__MSG_extDescription__",
+    "default_locale": "en",
+    "version": "2.23.3",
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "images/16.png",
+            "32": "images/32.png",
+            "48": "images/48.png",
+            "128": "images/128.png"
+        },
+        "default_title": "Yomi Image Translator"
+    },
+    "commands": {
+        "yomi_contextmenu": {
+            "suggested_key": {
+                "default": "Alt+Shift+D"
+            },
+            "description": "Open Context Menu"
+        },
+        "yomi_screencrop": {
+            "suggested_key": {
+                "default": "Alt+Shift+X"
+            },
+            "description": "Screen Crop Image"
+        },
+        "yomi_screenshot": {
+            "suggested_key": {
+                "default": "Alt+Shift+C"
+            },
+            "description": "Screenshot Image"
+        },
+        "yomi_translate": {
+            "suggested_key": {
+                "default": "Alt+Shift+Z"
+            },
+            "description": "Translate Image"
+        },
+        "yomi_edit": {
+            "description": "Edit Image"
+        },
+        "yomi_repeatscreencrop": {
+            "description": "Repeat Last Screen Crop"
+        },
+        "yomi_download": {
+            "description": "Download Image"
+        }
+    },
+    "icons": {
+        "16": "images/16.png",
+        "32": "images/32.png",
+        "48": "images/48.png",
+        "128": "images/128.png"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "images/*",
+                "css/*",
+                "fonts/*",
+                "html/*",
+                "scripts/*",
+                "hyphenation/*"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "background": {
+        "service_worker": "scripts/background.js",
+        "type": "module"
+    },
+    "permissions": [
+        "activeTab",
+        "storage",
+        "contextMenus",
+        "declarativeNetRequestWithHostAccess",
+        "unlimitedStorage"
+    ],
+    "optional_permissions": [
+        "downloads"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "scripts/untaint.js"
+            ],
+            "run_at": "document_start",
+            "world": "MAIN"
+        },
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "scripts/content.js"
+            ]
+        }
+    ]
 }

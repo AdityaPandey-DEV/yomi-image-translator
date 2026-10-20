@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — AI 漫画、韩漫、条漫翻译",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "用 AI 直接在网页上翻译漫画、韩漫和条漫。可就地编辑译文，并将整话打包为 ZIP 下载。",
+        "description": "Store listing summary"
+    }
+}

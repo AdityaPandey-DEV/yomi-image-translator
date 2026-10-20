@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — แปลมังงะ มังฮวา และการ์ตูนด้วย AI",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "แปลมังงะ มังฮวา และเว็บตูนบนหน้าเว็บได้ทันทีด้วย AI แก้ไขคำแปลได้ในที่เดียว และดาวน์โหลดทั้งตอนเป็นไฟล์ ZIP",
+        "description": "Store listing summary"
+    }
+}

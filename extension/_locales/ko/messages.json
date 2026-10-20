@@ -1,0 +1,10 @@
+{
+    "extName": {
+        "message": "Yomi Manga Translator — AI 만화·웹툰 번역기",
+        "description": "Store listing name"
+    },
+    "extDescription": {
+        "message": "일본 만화, 웹툰, 코믹스를 웹페이지에서 바로 AI로 번역하세요. 번역문은 그 자리에서 편집하고, 챕터 전체를 ZIP으로 다운로드할 수 있어요.",
+        "description": "Store listing summary"
+    }
+}

@@ -1,0 +1,588 @@
+@font-face {
+    font-family: "Figtree";
+    src: url("../fonts/Figtree.woff2");
+}
+
+@font-face {
+    font-family: "KomikaJam";
+    src: url("../fonts/KomikaJam.ttf");
+}
+
+@font-face {
+    font-family: "Bangers";
+    src: url("../fonts/Bangers.woff2");
+}
+
+@font-face {
+    font-family: "NotoSans";
+    src: url("../fonts/NotoSans.woff2");
+}
+
+@font-face {
+    font-family: "WildWords";
+    src: url("../fonts/WildWords.otf");
+}
+
+@font-face {
+    font-family: "Figtree";
+    src: url("../fonts/Figtree.woff2");
+}
+
+@font-face {
+    font-family: "Edo";
+    src: url("../fonts/Edo.ttf");
+}
+
+@font-face {
+    font-family: "RIDIBatang";
+    src: url("../fonts/RIDIBatang.otf");
+}
+
+@font-face {
+    font-family: "Bushidoo";
+    src: url("../fonts/Bushidoo.ttf");
+}
+
+@font-face {
+    font-family: "Hayah";
+    src: url("../fonts/Hayah.otf");
+}
+
+@font-face {
+    font-family: "Itim";
+    src: url("../fonts/Itim.woff2");
+}
+
+@font-face {
+    font-family: "MogulIrina";
+    src: url("../fonts/MogulIrina.ttf");
+}
+
+@font-face {
+    font-family: "BadComic";
+    src: url("../fonts/BadComic.woff2");
+}
+
+@font-face {
+    font-family: "MaShanZheng";
+    src: url("../fonts/MaShanZheng.woff2");
+}
+
+@font-face {
+    font-family: "Kalam";
+    src: url("../fonts/Kalam.woff2");
+}
+
+@font-face {
+    font-family: "HindSiliguri";
+    src: url("../fonts/HindSiliguri.woff2");
+}
+
+@font-face {
+    font-family: "Heroika";
+    src: url("../fonts/Heroika.woff2");
+}
+
+@font-face {
+    font-family: "Shonen";
+    src: url("../fonts/Shonen.woff2");
+}
+
+.komika {
+    font-family: "KomikaJam";
+}
+
+.bangers {
+    font-family: "Bangers";
+}
+
+.edo {
+    font-family: "Edo";
+}
+
+.ridi {
+    font-family: "RIDIBatang";
+}
+
+.bushidoo {
+    font-family: "Bushidoo";
+}
+
+.hayah {
+    font-family: "Hayah";
+}
+
+.itim {
+    font-family: "Itim";
+}
+
+.notosans {
+    font-family: "NotoSans";
+}
+
+.wildwords {
+    font-family: "WildWords";
+}
+
+.badcomic {
+    font-family: "BadComic";
+}
+
+.mogul {
+    font-family: "MogulIrina";
+}
+
+.mashanzheng {
+    font-family: "MaShanZheng";
+}
+
+.kalam {
+    font-family: "Kalam";
+}
+
+.hindsiliguri {
+    font-family: "HindSiliguri";
+}
+
+.heroika {
+    font-family: "Heroika";
+}
+
+.shonen {
+    font-family: "Shonen";
+}
+
+.font-figtree {
+    font-family: Figtree, sans-serif;
+}
+
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Popup sizing: a pixel base for every browser, plus one exception for phones.
+
+   Pure pixels, and no viewport units at all: a browser that sizes a popup to its content
+   measures the viewport while it is still deciding how big the popup is, so 100vw/100vh
+   resolve to almost nothing there. Either one used as a bound drags the popup down with it -
+   a sliver on iPad Safari, a strip in Chrome. min-width is the floor that catches it.
+
+   The settings list below is what gives way when height is short, so the footer stays on
+   screen no matter what. */
+html, body {
+    width: 420px;
+    min-width: 360px;
+    max-width: 440px;
+    height: 600px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* A phone is the only place the popup is a full-screen page with a viewport that means
+   something, so it is the only place the viewport may be used at all - filling a tall screen
+   instead of letterboxing, narrowing to a 360px phone instead of overflowing it, and
+   collapsing in landscape instead of pushing the footer off. Same query the rest of the
+   codebase treats as "mobile"; hover excludes touch laptops, whose popup is still
+   the content-sized kind.
+
+   min-height is what keeps iPad Safari out, and it is the only test that works: iPad matches
+   coarse+hover:none like a phone, but its popup is content-sized, so the viewport it reports
+   while sizing is the tiny one - under 240px, measured. The same broken number that makes
+   100vh useless also fails this query, so the rule simply does not apply and the pixel sizing
+   above stands. It converges rather than oscillating: once the popup settles at 600px the
+   query starts matching, and clamp then returns that same 600px.
+
+   300px because it has to sit above what iPad reports and below the shortest real phone in
+   landscape, which is 320px. The 240px floor below is still the last line of defence. */
+@media (pointer: coarse) and (hover: none) and (min-height: 300px) {
+    html, body {
+        width: clamp(360px, 100vw, 440px);
+        height: clamp(240px, 100vh, 800px);
+    }
+}
+
+/* Safari's popup is a window the user can resize, and a full-screen popup can exceed the cap
+   above - either way the UI ends up smaller than the space it is given, pinned to the top
+   left. html fills that space so body can be centred in it.
+
+   Viewport units are safe here in a way they were not as a cap: an engine that measures them
+   while it is still sizing the popup reports something tiny, and a tiny *floor* simply does
+   nothing - html keeps its pixel size and nothing collapses. That is the whole difference
+   between min-width: 100vw and max-width: 100vw. */
+html {
+    min-width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* #loader is absolute + w-full h-full. Without this its containing block is the window, so on
+   a resized popup it would cover the empty space around the UI instead of the UI itself. */
+body {
+    position: relative;
+}
+
+/* The settings list is the only part that may lose height - the enable card above it and the
+   footer below are both shrink-0 - so it needs to be the flex item that absorbs the shortfall
+   rather than one sized to its content. */
+#translate-settings {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Both option pills need 287px at text-sm (Figtree metrics); below that they drop to text-xs (261px)
+   rather than wrap. Queried on the row itself, as the popup's viewport lies while it is being sized. */
+#options-container {
+    container-type: inline-size;
+}
+
+@container (max-width: 289px) {
+    #options-container > button {
+        font-size: 12px;
+    }
+}
+
+/* A tile is 3:4, so its height is its width x 4/3 and the column width is what decides whether
+   two rows clear the popup. Left to fill the container they came out 117px wide -> 321px of
+   grid against the 310px available -> a scrollbar, which then narrowed the grid to 358px,
+   which shortened it to 312px, which still did not fit: it settles in the state that keeps the
+   bar. Capping the column breaks that loop, because the grid's height no longer depends on how
+   wide the container happens to be. 108px gives 2 x 144 + 8 = 296px, comfortably inside 310.
+
+   minmax so they still shrink on a popup narrower than 3 x 108 + gaps, and the wrapper still
+   scrolls on a genuinely short window rather than squashing them. */
+#recent-grid {
+    grid-template-columns: repeat(3, minmax(0, 108px));
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+/* The gap above the nav. On the nav rather than the grid's own mb-2 so it survives scrolling -
+   a bottom margin is part of the scrollable content and sits below the fold at rest. */
+#pagination-controls {
+    padding-top: 0.5rem;
+}
+
+/* The "settings used" popover in History. Its cap was max-h-[55vh], and 55% of a viewport that
+   iPad Safari reports as under 240px while it is still sizing the popup is a strip you cannot
+   read or scroll. Pixels by default - 55% of the 600px the popup actually is - and vh only
+   behind the same gate the sizing block above uses, where the viewport means something. */
+#recent-info-content {
+    max-height: 330px;
+}
+
+@media (pointer: coarse) and (hover: none) and (min-height: 300px) {
+    #recent-info-content {
+        max-height: 55vh;
+    }
+}
+
+/* Beats the padding: 0 !important above, which is what it has to clear. */
+body {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
+.reply {
+    cursor: pointer;
+    font-weight: bold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    flex-shrink: 0;
+    width: 100%;
+    padding: 0.5rem;
+    border-bottom-width: 2px;
+    border-color: #60B7D3;
+    overflow: hidden;
+}
+
+.reply:hover {
+    background-color: lightgrey
+}
+
+#loader {
+    background-color: rgba(0, 0, 0, .66);
+}
+
+.loader {
+    width: 84px;
+    height: 84px;
+    border: 8px solid #FFF;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s cubic-bezier(0.445, 0.05, 0.55, 0.95) infinite;
+}
+
+.link {
+    color: #60caff;
+}
+
+.link:hover {
+    color: #13b0ff;
+    text-decoration-line: underline;
+}
+
+.text-dropshadow {
+    text-shadow: 0 1.5px 1.5px rgba(0, 0, 0, .25);
+}
+
+.effect-shine {
+    mask-image: linear-gradient(-45deg, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 1) 60%);
+    mask-size: 400px;
+    animation: shine 3s infinite;
+}
+
+.effect-shine:hover {
+    animation: shine 1s infinite;
+}
+
+@keyframes shine {
+    0% {
+        mask-position: -250px 0;
+    }
+
+    100% {
+        mask-position: 150px 0px;
+    }
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Custom Scrollbar */
+
+/* Firefox implements none of the ::-webkit-scrollbar rules below - scrollbar-width and
+   scrollbar-color are the whole of what it honours. Without them the popup fell back to the
+   OS scrollbars there, while the shadow-DOM UI looked styled because content.css sets these.
+   Colours mirror the webkit thumbs beneath, so the two engines agree.
+
+   Gated to Firefox: from Chrome 121 these take precedence over the ::-webkit-scrollbar rules
+   below and hand the element back to the browser's own scrollbar, which on Windows carries
+   stepper arrows that ::-webkit-scrollbar-button then can no longer hide.
+
+   None of this reaches Firefox's overlay scrollbars, which follow the OS "automatically hide
+   scroll bars" setting: they occupy no layout width at all and paint over whatever is beneath
+   them. scrollbar-gutter is specified as a no-op for those, so the gutter is reserved by hand
+   below.
+
+   On * for the same reason content.css does it: a scrollbar belongs to whichever element
+   scrolls, and which those are is not knowable from here. */
+@supports not selector(::-webkit-scrollbar) {
+    /* auto, not thin: Firefox cannot inset a thumb the way background-clip does for the
+       webkit path, so thin left the bar hugging the content with no gutter at all. */
+    *, *::before, *::after {
+        scrollbar-width: auto;
+        scrollbar-color: var(--color-neutral-300) transparent;
+    }
+
+    html.dark *, html.dark *::before, html.dark *::after {
+        scrollbar-color: var(--color-neutral-600) transparent;
+    }
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 10px track carrying a 6px thumb: the 2px transparent border plus background-clip keeps the
+   thumb off the track edges. Every other thumb rule sets background-color, not the background
+   shorthand - the shorthand resets background-clip and the padding would vanish on hover. */
+::-webkit-scrollbar-thumb {
+    background-color: var(--color-neutral-300);
+    border-radius: 100vh;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-neutral-400);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+    background-color: var(--color-neutral-600);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-neutral-500);
+}
+
+/* Styling ::-webkit-scrollbar at all makes Chromium draw its stepper buttons, which the
+   native scrollbar leaves off - so every scroller grew a tiny arrow at each end. */
+::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Firefox's overlay scrollbar takes no width (measured: clientWidth === offsetWidth), so it
+   lands on top of the controls at the panel's right edge - the tool row loses its last button
+   under the bar as it widens on hover. Reserved by hand, since scrollbar-gutter cannot.
+   Overrides the pr-1 / max-xl:pr-3.5 the markup carries, at both breakpoints. */
+@supports not selector(::-webkit-scrollbar) {
+    #translate-settings,
+    #settings-scroll,
+    #byok-keys-list,
+    #selected-source-langs-list {
+        padding-right: 1rem;
+    }
+}
+
+#translate-settings::-webkit-scrollbar-track {
+    margin: 12px 0;
+}
+
+#settings-scroll::-webkit-scrollbar-track {
+    margin: 12px 0;
+}
+
+#saved-prompts-container::-webkit-scrollbar {
+    height: 3px !important;
+}
+
+#saved-prompts-container::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+#saved-prompts-container::-webkit-scrollbar-thumb {
+    background-color: #d4d4d4 !important;
+    border-radius: 10px !important;
+    /* A 3px hairline by design - the global 2px padding would leave nothing to see. */
+    border: 0 !important;
+    background-clip: border-box !important;
+}
+
+#saved-prompts-container::-webkit-scrollbar-thumb:hover {
+    background-color: #a3a3a3 !important;
+}
+
+#saved-prompts-container::-webkit-scrollbar-button,
+#saved-prompts-container::-webkit-scrollbar-corner {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+/* Keyboard cursor inside an open custom dropdown (see setupDropdownArrowKeys). Kept
+   separate from the selected-row highlight so the two states can be told apart: the
+   cyan fill is "this is the current value", this inset ring is "this is where the
+   arrow keys are". Inset rather than an outline so it isn't clipped by the list's
+   own overflow, and drawn with the same cyan the scrub boxes use for focus. */
+.dropdown-active-option {
+    box-shadow: inset 0 0 0 2px #06b6d4;
+}
+
+/* The target-language list is w-max, so before capping it here it sized itself to the
+   single widest row - "Portuguese (Portugal) / Portugues (Portugal)" - and every one of
+   the other 132 rows paid for it. Capped instead, with the endonym set to truncate first
+   (the English name is shrink-0), so only the handful of genuinely long pairs give
+   anything up. The viewport term keeps it from overflowing a narrow popup, where
+   positionFloatingDropdown() would otherwise have to clamp it back anyway. */
+#language-dropdown-list {
+    max-width: min(21rem, calc(100vw - 2rem));
+}
+
+/* Range sliders and their scrub boxes in Advanced Options. Same controls as edit mode, so the
+   rules are the ones from content.css - with one change: the popup drives dark mode by toggling
+   a .dark class on <html> (see the theme toggle in popup.js), not by prefers-color-scheme, so
+   the dark thumb border keys off that instead. Keying off the media query here would leave the
+   thumb light for anyone who has overridden the theme. */
+.yomi-slider {
+    /* Owns the whole touch - see the note in content.css. */
+    touch-action: none;
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.yomi-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #06b6d4;
+    border: 1px solid #a3a3a3;
+    cursor: pointer;
+}
+
+.yomi-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #06b6d4;
+    border: 1px solid #a3a3a3;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+html.dark .yomi-slider::-webkit-slider-thumb {
+    border-color: #737373;
+}
+
+html.dark .yomi-slider::-moz-range-thumb {
+    border-color: #737373;
+}
+
+/* The typeable/draggable value box beside each slider. Its <span id="X-value"> sibling stays in
+   the markup (hidden) and keeps being the thing that formats the number; this box mirrors that
+   text via a MutationObserver rather than reimplementing the formatting. */
+.yomi-scrub-box {
+    cursor: ew-resize;
+    touch-action: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.yomi-scrub-box:focus {
+    cursor: text;
+    outline: none;
+    border-color: #06b6d4 !important;
+    box-shadow: 0 0 0 1px #06b6d4;
+}
+
+.yomi-scrub-box[readonly] {
+    caret-color: transparent;
+}
+
+/* Pill switch hover, as in content.css and the website's base.css (DESIGN §5.6). The popup
+   has no shadow root, so only the html.dark selectors apply. */
+.yomi-pill-switch {
+    transition: background-color 0.15s ease-out;
+}
+
+label:hover .yomi-pill-switch:not(.peer-checked),
+.peer:not(:checked) ~ .yomi-pill-switch:hover,
+label:hover .peer:not(:checked) ~ .yomi-pill-switch,
+.peer:not(:checked):hover ~ .yomi-pill-switch {
+    background-color: #b5b5b5;
+}
+
+html.dark label:hover .yomi-pill-switch:not(.peer-checked),
+html.dark .peer:not(:checked) ~ .yomi-pill-switch:hover,
+html.dark label:hover .peer:not(:checked) ~ .yomi-pill-switch,
+html.dark .peer:not(:checked):hover ~ .yomi-pill-switch {
+    background-color: #525252;
+}
+
+label:hover .peer:checked ~ .yomi-pill-switch,
+.peer:checked:hover ~ .yomi-pill-switch,
+.peer:checked ~ .yomi-pill-switch:hover {
+    background-color: #06b6d4 !important;
+}

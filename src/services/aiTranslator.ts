@@ -54,7 +54,7 @@ async function callGoogleGeminiVision(
   config: BYOKConfig,
   previousContext: string
 ): Promise<DetectionResult> {
-  const model = config.googleModel || 'gemini-2.0-flash';
+  const selectedModel = config.googleModel || 'gemini-3.8-flash';
   const apiKey = config.googleApiKey;
   const base64Data = imageDataUrl.split(',')[1];
   const mimeType = imageDataUrl.substring(imageDataUrl.indexOf(':') + 1, imageDataUrl.indexOf(';'));
@@ -83,44 +83,73 @@ Output strictly valid JSON with this exact schema:
   ]
 }`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: systemPrompt },
+  const candidateModels = Array.from(new Set([
+    selectedModel,
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+  ]));
+
+  let lastError: Error | null = null;
+
+  for (const model of candidateModels) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
               {
-                inline_data: {
-                  mime_type: mimeType || 'image/png',
-                  data: base64Data,
-                },
+                parts: [
+                  { text: systemPrompt },
+                  {
+                    inline_data: {
+                      mime_type: mimeType || 'image/png',
+                      data: base64Data,
+                    },
+                  },
+                ],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.2,
-        },
-      }),
-    }
-  );
+            generationConfig: {
+              response_mime_type: 'application/json',
+              temperature: 0.2,
+            },
+          }),
+        }
+      );
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini (${model}) ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error(`Empty response from Gemini ${model}`);
+
+      let cleaned = rawText.trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+      }
+
+      const parsed = JSON.parse(cleaned);
+      return formatParsedBubbles(parsed, config);
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[Yomi] Gemini model ${model} failed, trying fallback:`, err.message || err);
+    }
   }
 
-  const result = await response.json();
-  const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) throw new Error('Empty response from Gemini');
-
-  const parsed = JSON.parse(rawText);
-  return formatParsedBubbles(parsed, config);
+  throw lastError || new Error('All Gemini models failed');
 }
 
 /**
