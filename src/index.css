@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-figtree: 'Figtree', sans-serif;
+    --font-comic: 'Comic Neue', cursive, sans-serif;
+    --font-shonen: 'Bangers', cursive, sans-serif;
+    --font-japanese: 'Noto Sans JP', sans-serif;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: var(--font-figtree);
+  }
+}
+
+/* Custom Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f97316;
+}
+
+/* Font utilities */
+.font-figtree {
+  font-family: var(--font-figtree);
+}
+
+.font-comic {
+  font-family: var(--font-comic);
+}
+
+.font-shonen {
+  font-family: var(--font-shonen);
+}
+
+.font-japanese {
+  font-family: var(--font-japanese);
+}

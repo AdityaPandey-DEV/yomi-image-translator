@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Yomi Manga Translator</title>
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      background: #09090b;
+      color: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #27272a;
+    }
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    }
+    .logo svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffffff;
+    }
+    .title {
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .sub {
+      font-size: 11px;
+      color: #a1a1aa;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .label {
+      font-size: 12px;
+      color: #d4d4d8;
+    }
+    select, input[type="text"], input[type="password"] {
+      width: 100%;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #f4f4f5;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      box-sizing: border-box;
+      outline: none;
+    }
+    select:focus, input:focus {
+      border-color: #f97316;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #27272a;
+      transition: .2s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #f97316;
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+    .btn-studio {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      background: #f97316;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 9px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-top: 12px;
+      font-size: 12px;
+      text-decoration: none;
+    }
+    .btn-studio:hover {
+      background: #ea580c;
+    }
+    .footer {
+      font-size: 10px;
+      color: #71717a;
+      text-align: center;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24">
+        <path d="M2 4h20v2H2V4zm2 3h16v1.5H4V7zm3 2.5h2V20H7V9.5zm8 0h2V20h-2V9.5zM3 2h18v1.5H3V2z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="title">Yomi Manga Translator</div>
+      <div class="sub">Browser Extension v2.1</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Auto-Translate on Scroll</span>
+    <label class="switch">
+      <input type="checkbox" id="auto-translate-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div style="margin-bottom: 12px;">
+    <div class="label" style="margin-bottom: 6px;">Target Language</div>
+    <select id="target-lang">
+      <option value="en">English</option>
+      <option value="es">Spanish (Español)</option>
+      <option value="fr">French (Français)</option>
+      <option value="de">German (Deutsch)</option>
+      <option value="pt">Portuguese (Português)</option>
+      <option value="it">Italian (Italiano)</option>
+      <option value="ru">Russian (Русский)</option>
+      <option value="zh">Chinese (中文)</option>
+      <option value="ja">Japanese (日本語)</option>
+      <option value="ko">Korean (한국어)</option>
+      <option value="id">Indonesian (Bahasa)</option>
+    </select>
+  </div>
+
+  <div style="margin-bottom: 12px;">
+    <div class="label" style="margin-bottom: 6px;">Google Gemini API Key (BYOK)</div>
+    <input type="password" id="gemini-key" placeholder="AIzaSy... (Optional)">
+  </div>
+
+  <button id="save-btn" class="btn-studio">Save Settings</button>
+
+  <a href="http://localhost:5173" target="_blank" class="btn-studio" style="background: #27272a; margin-top: 8px;">
+    Open Yomi Studio Web App
+  </a>
+
+  <div class="footer">
+    Hover any manga image & click the translate icon.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
