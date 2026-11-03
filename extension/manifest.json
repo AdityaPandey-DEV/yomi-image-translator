@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Yomi Manga & Comic AI Translator",
-  "version": "2.1.0",
-  "description": "Translate raw Japanese, Korean, and Chinese manga, manhwa & comics on any website with comic fonts, bubble inpainting, and auto-scroll.",
+  "name": "Yomi Image Translator",
+  "version": "2.2.0",
+  "description": "Instantly translate raw Japanese, Korean, and Chinese manga, comics, and webtoon images in-place with AI.",
   "permissions": [
     "activeTab",
     "storage",

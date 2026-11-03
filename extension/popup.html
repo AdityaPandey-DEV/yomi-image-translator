@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Yomi Manga Translator</title>
+  <title>Yomi Image Translator</title>
   <style>
     body {
       width: 320px;
@@ -66,6 +66,7 @@
       font-size: 12px;
       box-sizing: border-box;
       outline: none;
+      transition: border-color 0.15s;
     }
     select:focus, input:focus {
       border-color: #f97316;
@@ -106,7 +107,7 @@
     input:checked + .slider:before {
       transform: translateX(16px);
     }
-    .btn-studio {
+    .btn-save {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -119,18 +120,56 @@
       border-radius: 8px;
       border: none;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 14px;
+      font-size: 12px;
+      transition: background 0.15s ease;
+    }
+    .btn-save:hover {
+      background: #ea580c;
+    }
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #d4d4d8;
+      font-weight: 600;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
       font-size: 12px;
       text-decoration: none;
+      box-sizing: border-box;
+      transition: all 0.15s ease;
     }
-    .btn-studio:hover {
-      background: #ea580c;
+    .btn-secondary:hover {
+      background: #27272a;
+      color: #ffffff;
+    }
+    .links-row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 12px;
+      font-size: 11px;
+    }
+    .links-row a {
+      color: #a1a1aa;
+      text-decoration: none;
+    }
+    .links-row a:hover {
+      color: #f97316;
+      text-decoration: underline;
     }
     .footer {
       font-size: 10px;
       color: #71717a;
       text-align: center;
-      margin-top: 14px;
+      margin-top: 12px;
     }
   </style>
 </head>
@@ -138,12 +177,12 @@
   <div class="header">
     <div class="logo">
       <svg viewBox="0 0 24 24">
-        <path d="M2 4h20v2H2V4zm2 3h16v1.5H4V7zm3 2.5h2V20H7V9.5zm8 0h2V20h-2V9.5zM3 2h18v1.5H3V2z"/>
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
       </svg>
     </div>
     <div>
-      <div class="title">Yomi Manga Translator</div>
-      <div class="sub">Browser Extension v2.1</div>
+      <div class="title">Yomi Image Translator</div>
+      <div class="sub">AI Vision Extension v2.2</div>
     </div>
   </div>
 
@@ -173,18 +212,35 @@
   </div>
 
   <div style="margin-bottom: 12px;">
-    <div class="label" style="margin-bottom: 6px;">Google Gemini API Key (BYOK)</div>
-    <input type="password" id="gemini-key" placeholder="AIzaSy... (Optional)">
+    <div class="label" style="margin-bottom: 6px;">Gemini Vision Model</div>
+    <select id="gemini-model">
+      <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ultra Fast)</option>
+      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+      <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+    </select>
   </div>
 
-  <button id="save-btn" class="btn-studio">Save Settings</button>
+  <div style="margin-bottom: 12px;">
+    <div class="label" style="margin-bottom: 6px;">Google Gemini API Key (BYOK)</div>
+    <input type="password" id="gemini-key" placeholder="AIzaSy... (100% Free & Private)">
+  </div>
 
-  <a href="http://localhost:5173" target="_blank" class="btn-studio" style="background: #27272a; margin-top: 8px;">
-    Open Yomi Studio Web App
+  <button id="save-btn" class="btn-save">Save Settings</button>
+
+  <a href="https://yomi-translator.vercel.app" target="_blank" class="btn-secondary">
+    Open Yomi Web Studio
   </a>
 
+  <div class="links-row">
+    <a href="https://yomi-translator.vercel.app/updates" target="_blank">What's New</a>
+    <span>•</span>
+    <a href="https://yomi-translator.vercel.app/feedback" target="_blank">Feedback</a>
+    <span>•</span>
+    <a href="https://yomi-translator.vercel.app/privacy" target="_blank">Privacy</a>
+  </div>
+
   <div class="footer">
-    Hover any manga image & click the translate icon.
+    Hover any manga/webtoon image & click Translate.
   </div>
 
   <script src="popup.js"></script>

@@ -119,7 +119,14 @@ Output strictly valid JSON with this exact schema:
   const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) throw new Error('Empty response from Gemini');
 
-  const parsed = JSON.parse(rawText);
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+  }
+
+  const parsed = JSON.parse(cleaned);
   return formatParsedBubbles(parsed, config);
 }
 

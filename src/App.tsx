@@ -8,6 +8,7 @@ import { HelpModal } from './components/HelpModal';
 import { ExtensionModal } from './components/ExtensionModal';
 import { ReadingMode } from './components/ReadingMode';
 import { ScriptEditor } from './components/ScriptEditor';
+import { SupportPage } from './components/SupportPages';
 import {
   PageImage,
   TextObject,
@@ -50,6 +51,18 @@ const DEFAULT_BYOK_CONFIG: BYOKConfig = {
 };
 
 export function App() {
+  // Support and legal page routing
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (pathname === '/updates') return <SupportPage pageType="updates" />;
+  if (pathname === '/feedback') return <SupportPage pageType="feedback" />;
+  if (pathname === '/privacy') return <SupportPage pageType="privacy" />;
+  if (pathname === '/terms') return <SupportPage pageType="terms" />;
+  if (pathname === '/cookies') return <SupportPage pageType="cookies" />;
+  if (pathname === '/account') return <SupportPage pageType="account" />;
+  if (pathname === '/translate' && typeof window !== 'undefined') {
+    window.history.replaceState(null, '', '/');
+  }
+
   // Theme & Modes
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentTab, setCurrentTab] = useState<'studio' | 'reader' | 'script'>('studio');

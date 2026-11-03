@@ -1,5 +1,5 @@
-// Yomi Manga & Comic Translator — Content Script v2.1.0
-// Injects floating Yomi gates, in-image canvas translation, raw/translated toggle, and scroll listener.
+// Yomi Image Translator - Content Script v2.2.0
+// Clean-room, high-performance in-place overlay & comic typesetting.
 
 (() => {
   const PROCESSED_ATTR = 'data-yomi-processed';
@@ -7,18 +7,17 @@
   let targetLang = 'en';
   let byok = {};
 
-  // Sync settings
   function loadSettings() {
     chrome.storage.sync.get(['autoTranslate', 'targetLang', 'byok'], data => {
-      autoTranslate = Boolean(data.autoTranslate);
-      targetLang = data.targetLang || 'en';
-      byok = data.byok || {};
+      autoTranslate = Boolean(data?.autoTranslate);
+      targetLang = data?.targetLang || 'en';
+      byok = data?.byok || {};
     });
   }
   loadSettings();
   chrome.storage.onChanged.addListener(() => loadSettings());
 
-  // IntersectionObserver for auto-translating manga strips on scroll
+  // Scroll observer for auto-translating manga strips on scroll
   const scrollObserver = new IntersectionObserver(
     entries => {
       if (!autoTranslate) return;
@@ -34,11 +33,9 @@
     { rootMargin: '300px 0px' }
   );
 
-  // Scan for manga pages & panels
   function scanImages() {
     const images = document.querySelectorAll(`img:not([${PROCESSED_ATTR}])`);
     images.forEach(img => {
-      // Manga pages are substantial images (exclude avatars, icons, banners)
       const w = img.clientWidth || img.naturalWidth;
       const h = img.clientHeight || img.naturalHeight;
 
@@ -68,13 +65,13 @@
     img.parentNode.insertBefore(wrapper, img);
     wrapper.appendChild(img);
 
-    // Yomi Gate Hover Button
+    // Floating Translate Gate Button
     const gateBtn = document.createElement('button');
     gateBtn.className = 'yomi-gate-button';
-    gateBtn.title = 'Translate with Yomi';
+    gateBtn.title = 'Translate with Yomi Image Translator';
     gateBtn.innerHTML = `
       <svg class="yomi-gate-svg" viewBox="0 0 24 24">
-        <path d="M2 4h20v2H2V4zm2 3h16v1.5H4V7zm3 2.5h2V20H7V9.5zm8 0h2V20h-2V9.5zM3 2h18v1.5H3V2z"/>
+        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
       </svg>
       <span class="yomi-gate-text">Translate</span>
     `;
@@ -88,7 +85,6 @@
     wrapper.appendChild(gateBtn);
     img.dataset.yomiGate = 'true';
 
-    // Register with scroll observer
     scrollObserver.observe(img);
   }
 
@@ -96,14 +92,14 @@
     const wrapper = wrapperParam || img.closest('.yomi-manga-wrapper');
     const gateBtn = gateBtnParam || wrapper?.querySelector('.yomi-gate-button');
 
-    // If already translated, toggle translated overlay vs raw
+    // If already translated, toggle between translated overlay and original image
     if (img.dataset.yomiTranslated === 'true') {
       const overlay = wrapper?.querySelector('.yomi-overlay-canvas');
       const toggleBadge = wrapper?.querySelector('.yomi-toggle-badge');
       if (overlay) {
         const isHidden = overlay.style.display === 'none';
         overlay.style.display = isHidden ? 'block' : 'none';
-        if (toggleBadge) toggleBadge.innerText = isHidden ? 'Translated' : 'Raw Scan';
+        if (toggleBadge) toggleBadge.innerText = isHidden ? 'Translated (Click for Raw)' : 'Raw Scan (Click to Translate)';
         if (gateBtn) gateBtn.classList.toggle('yomi-active', isHidden);
       }
       return;
@@ -120,7 +116,6 @@
     try {
       const src = img.currentSrc || img.src;
 
-      // Ask background service worker to process image
       chrome.runtime.sendMessage(
         {
           action: 'TRANSLATE_PAYLOAD',
@@ -148,15 +143,19 @@
               `;
             }
 
-            // Append Toggle Badge in Bottom Right
             attachToggleBadge(wrapper, img);
           } else {
-            throw new Error(response?.error || 'Translation failed');
+            const errorMsg = response?.error || 'Translation failed';
+            showNotice(wrapper, `Yomi Notice: ${errorMsg}`);
+            if (gateBtn) {
+              gateBtn.classList.remove('yomi-loading');
+              gateBtn.innerHTML = `<span>Retry</span>`;
+            }
           }
         }
       );
     } catch (err) {
-      console.warn('[Yomi Translator]', err);
+      console.warn('[Yomi]', err);
       img.dataset.yomiLoading = 'false';
       if (gateBtn) {
         gateBtn.classList.remove('yomi-loading');
@@ -173,40 +172,76 @@
       wrapper.appendChild(canvas);
     }
 
-    const nw = img.naturalWidth || img.width;
-    const nh = img.naturalHeight || img.height;
+    const nw = img.naturalWidth || img.clientWidth || img.width;
+    const nh = img.naturalHeight || img.clientHeight || img.height;
 
     canvas.width = nw;
     canvas.height = nh;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Erase text areas with speech bubble tone & render comic text
     bubbles.forEach(b => {
+      const text = (b.translated_text || '').trim();
+      if (!text) return;
+
+      const bw = Math.max(20, b.width);
+      const bh = Math.max(20, b.height);
+      const bx = b.x;
+      const by = b.y;
+
       ctx.save();
 
-      // Clean interior of bubble
+      // 1. Inpaint bubble background cleanly
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.ellipse(b.x, b.y, b.width / 2, b.height / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Typeset dialogue
-      const text = (b.translated_text || '').toUpperCase();
-      const fontSize = Math.max(12, Math.min(24, Math.round(b.width / 7.5)));
-      ctx.font = `bold ${fontSize}px "Comic Neue", "Bangers", Arial, sans-serif`;
+      // 2. Typeset translated text inside bubble with multiline wrapping
+      let fontSize = Math.max(12, Math.min(24, Math.round(bw / 7.5)));
+      ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Outline halo for readability
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      ctx.lineJoin = 'round';
-      ctx.strokeText(text, b.x, b.y, b.width * 0.88);
+      const maxLineWidth = Math.max(20, bw * 0.82);
+      const words = text.split(/\s+/);
+      let lines = [];
+      let currentLine = '';
 
-      // Foreground text
-      ctx.fillStyle = '#000000';
-      ctx.fillText(text, b.x, b.y, b.width * 0.88);
+      for (let word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxLineWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+
+      // Adjust font size if total text exceeds height
+      let lineHeight = fontSize * 1.25;
+      if (lines.length * lineHeight > bh * 0.85) {
+        fontSize = Math.max(10, Math.round(fontSize * 0.8));
+        ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
+        lineHeight = fontSize * 1.2;
+      }
+
+      const totalHeight = lines.length * lineHeight;
+      const startY = by - (totalHeight / 2) + (lineHeight / 2);
+
+      lines.forEach((line, idx) => {
+        const curY = startY + (idx * lineHeight);
+        // White halo stroke for maximum clarity
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(line, bx, curY, maxLineWidth);
+
+        // Crisp black lettering
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(line, bx, curY, maxLineWidth);
+      });
 
       ctx.restore();
     });
@@ -217,8 +252,8 @@
 
     const badge = document.createElement('button');
     badge.className = 'yomi-toggle-badge';
-    badge.innerText = 'Translated (Click to toggle raw)';
-    badge.title = 'Toggle raw Japanese/Korean vs translated English';
+    badge.innerText = 'Translated (Click for Raw)';
+    badge.title = 'Click to toggle between original raw and translated';
 
     badge.addEventListener('click', e => {
       e.preventDefault();
@@ -227,11 +262,26 @@
       if (overlay) {
         const isHidden = overlay.style.display === 'none';
         overlay.style.display = isHidden ? 'block' : 'none';
-        badge.innerText = isHidden ? 'Translated' : 'Raw Scan';
+        badge.innerText = isHidden ? 'Translated (Click for Raw)' : 'Raw Scan (Click to Translate)';
       }
     });
 
     wrapper.appendChild(badge);
+  }
+
+  function showNotice(wrapper, message) {
+    const existing = wrapper.querySelector('.yomi-notice-pill');
+    if (existing) existing.remove();
+
+    const pill = document.createElement('div');
+    pill.className = 'yomi-notice-pill';
+    pill.innerText = message;
+    wrapper.appendChild(pill);
+
+    setTimeout(() => {
+      pill.style.opacity = '0';
+      setTimeout(() => pill.remove(), 400);
+    }, 4000);
   }
 
   // Observe dynamically loaded images (infinite scroll manga readers)
