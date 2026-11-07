@@ -39,12 +39,12 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
           <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
             <ArrowLeft className="w-4 h-4" />
           </div>
-          <span className="font-semibold text-sm">Back to Yomi Image Translator Studio</span>
+          <span className="font-semibold text-sm">Back to Manga & Manhwa Translator Studio</span>
         </a>
 
         <div className="flex items-center gap-2">
-          <img src="/icons/icon32.png" alt="Yomi" className="w-6 h-6 object-contain" />
-          <span className="font-bold text-sm tracking-tight text-neutral-200">Yomi Image Translator</span>
+          <img src="/icons/icon32.png" alt="Logo" className="w-6 h-6 object-contain" />
+          <span className="font-bold text-sm tracking-tight text-neutral-200">Manga & Manhwa Image Translator</span>
         </div>
       </header>
 
@@ -57,7 +57,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5" /> What's New in Version 2.23.3
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Yomi Image Translator Updates</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">Manga & Manhwa Image Translator Updates</h1>
               <p className="text-neutral-400 text-sm">
                 Latest improvements, release notes, and AI engine advancements.
               </p>
@@ -103,7 +103,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight">Report Bug / Give Feedback</h1>
               <p className="text-neutral-400 text-sm">
-                Help us make Yomi Image Translator the best comic & image translator.
+                Help us make Manga & Manhwa Image Translator the best comic & image translator.
               </p>
             </div>
 
@@ -186,7 +186,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
             <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4 text-sm text-neutral-300">
               <h2 className="text-lg font-bold text-white">1. Strict Client-Side BYOK Policy</h2>
               <p>
-                Yomi Image Translator operates primarily as a client-side application. When you use Bring Your Own Key (BYOK) mode with Google Gemini, OpenAI, Claude, or local Ollama models, all vision and translation requests are dispatched directly from your browser to the respective model provider using your own API credentials.
+                Manga & Manhwa Image Translator operates primarily as a client-side application. When you use Bring Your Own Key (BYOK) mode with Google Gemini, OpenAI, Claude, or local Ollama models, all vision and translation requests are dispatched directly from your browser to the respective model provider using your own API credentials.
               </p>
 
               <h2 className="text-lg font-bold text-white">2. Zero Telemetry & Image Storage</h2>
@@ -214,7 +214,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
             <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4 text-sm text-neutral-300">
               <h2 className="text-lg font-bold text-white">1. Open BYOK Platform</h2>
               <p>
-                Yomi Image Translator is provided as a utility for translation and typesetting. You are responsible for ensuring your API keys adhere to the terms and acceptable use policies of your chosen AI provider (e.g., Google AI Studio, OpenAI, Anthropic).
+                Manga & Manhwa Image Translator is provided as a utility for translation and typesetting. You are responsible for ensuring your API keys adhere to the terms and acceptable use policies of your chosen AI provider (e.g., Google AI Studio, OpenAI, Anthropic).
               </p>
 
               <h2 className="text-lg font-bold text-white">2. Free & Fair Use</h2>
@@ -236,7 +236,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
 
             <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4 text-sm text-neutral-300">
               <p>
-                Yomi Image Translator uses zero third-party advertising cookies or trackers. We only use functional client-side storage (HTML5 `localStorage` and Chrome Extension `chrome.storage`) to persist your interface theme preference, model selection, and local API keys.
+                Manga & Manhwa Image Translator uses zero third-party advertising cookies or trackers. We only use functional client-side storage (HTML5 `localStorage` and Chrome Extension `chrome.storage`) to persist your interface theme preference, model selection, and local API keys.
               </p>
             </div>
           </div>
@@ -249,7 +249,7 @@ export const SupportPage: React.FC<SupportPageProps> = ({ pageType }) => {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-semibold">
                 <Key className="w-3.5 h-3.5" /> Account & BYOK Settings
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Your Yomi Account</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">Your Account & BYOK Vault</h1>
               <p className="text-neutral-400 text-sm">
                 Manage your API keys, local vault, and sync preferences.
               </p>

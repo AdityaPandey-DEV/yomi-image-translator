@@ -59,13 +59,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-lg text-neutral-100 tracking-tight">Yomi</span>
+            <span className="font-bold text-lg text-neutral-100 tracking-tight">Manga & Manhwa</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
-              Manga Studio 2.0
+              Translator AI
             </span>
           </div>
           <p className="text-[11px] text-neutral-400 leading-none mt-0.5">
-            AI Manga, Manhwa & Webtoon Translator
+            Instant In-Place Comic & Webtoon Localization
           </p>
         </div>
       </div>
