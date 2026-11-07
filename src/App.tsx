@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AuthProvider, useAuth } from './lib/AuthContext';
+import { AuthPage } from './components/AuthPage';
+import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { InteractiveCanvas } from './components/InteractiveCanvas';
 import { SidebarEditor } from './components/SidebarEditor';
@@ -20,7 +23,7 @@ import { createSampleShonenPage, createSampleRomancePage } from './utils/sampleM
 import { parseUploadedFiles } from './utils/fileIo';
 import { inpaintAllBubbles } from './utils/inpainting';
 import { detectAndTranslateImage } from './services/aiTranslator';
-import { UploadCloud, Sparkles, FolderArchive, ArrowRight } from 'lucide-react';
+import { UploadCloud, Loader2 } from 'lucide-react';
 
 const DEFAULT_BYOK_CONFIG: BYOKConfig = {
   activeProvider: 'google',
@@ -50,27 +53,47 @@ const DEFAULT_BYOK_CONFIG: BYOKConfig = {
   inpaintMultiplier: 1.15,
 };
 
-export function App() {
-  // Support and legal page routing
+function MainRouter() {
+  const { user, loading } = useAuth();
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+
+  // Legal and support pages
   if (pathname === '/updates') return <SupportPage pageType="updates" />;
   if (pathname === '/feedback') return <SupportPage pageType="feedback" />;
   if (pathname === '/privacy') return <SupportPage pageType="privacy" />;
   if (pathname === '/terms') return <SupportPage pageType="terms" />;
   if (pathname === '/cookies') return <SupportPage pageType="cookies" />;
-  if (pathname === '/account') return <SupportPage pageType="account" />;
-  if (pathname === '/translate' && typeof window !== 'undefined') {
-    window.history.replaceState(null, '', '/');
+  if (pathname === '/auth/callback') return <AuthPage />;
+  if (pathname === '/studio') return <StudioView />;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-neutral-950 text-neutral-400 gap-3">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          Loading Cloud Vault...
+        </span>
+      </div>
+    );
   }
 
-  // Theme & Modes
+  // Root "/": If signed in, show Dashboard. If not signed in, show AuthPage.
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return <Dashboard />;
+}
+
+// Studio Editor View (available via /studio)
+function StudioView() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [currentTab, setCurrentTab] = useState<'studio' | 'reader' | 'script'>('studio');
   const [viewMode, setViewMode] = useState<ViewMode>('translated');
   const [activeTool, setActiveTool] = useState<EditorTool>('select');
   const [brushSize, setBrushSize] = useState(16);
 
-  // BYOK Configuration from localStorage
   const [byokConfig, setByokConfig] = useState<BYOKConfig>(() => {
     try {
       const saved = localStorage.getItem('yomi_byok_config');
@@ -80,17 +103,14 @@ export function App() {
     }
   });
 
-  // Pages & Navigation State
   const [pages, setPages] = useState<PageImage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [selectedBubbleId, setSelectedBubbleId] = useState<string | null>(null);
 
-  // Processing & Queue State
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBatchTranslating, setIsBatchTranslating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
-  // Modals
   const [showByokModal, setShowByokModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showExtensionModal, setShowExtensionModal] = useState(false);
@@ -101,7 +121,6 @@ export function App() {
   const selectedBubble =
     currentPage?.textObjects.find(b => b.id === selectedBubbleId) || null;
 
-  // Persist BYOK Config to localStorage
   const updateByokConfig = (updated: Partial<BYOKConfig>) => {
     setByokConfig(prev => {
       const next = { ...prev, ...updated };
@@ -110,34 +129,13 @@ export function App() {
     });
   };
 
-  // Initial Auto-Load of Sample Manga Page on First Run
-  useEffect(() => {
-    const initSample = async () => {
-      const sampleUrl = await createSampleShonenPage();
-      const initialPage: PageImage = {
-        id: `page-shonen-${Date.now()}`,
-        filename: 'sample_shonen_chapter_01.png',
-        originalSrc: sampleUrl,
-        inpaintedSrc: null,
-        textObjects: [],
-        history: { past: [], future: [] },
-        width: 900,
-        height: 1350,
-        status: 'idle',
-        createdDate: Date.now(),
-      };
-      setPages([initialPage]);
-    };
-    initSample();
-  }, []);
-
-  // Quick Load Sample Manga
   const handleLoadSample = async (type: 'shonen' | 'romance') => {
-    const dataUrl = type === 'shonen' ? await createSampleShonenPage() : await createSampleRomancePage();
+    const sampleUrl =
+      type === 'shonen' ? await createSampleShonenPage() : await createSampleRomancePage();
     const newPage: PageImage = {
-      id: `page-sample-${Date.now()}`,
-      filename: `sample_${type}_page_${pages.length + 1}.png`,
-      originalSrc: dataUrl,
+      id: `page-${type}-${Date.now()}`,
+      filename: `sample_${type}_chapter_01.png`,
+      originalSrc: sampleUrl,
       inpaintedSrc: null,
       textObjects: [],
       history: { past: [], future: [] },
@@ -148,165 +146,136 @@ export function App() {
     };
     setPages(prev => [...prev, newPage]);
     setCurrentPageIndex(pages.length);
-    setSelectedBubbleId(null);
   };
 
-  // Bubble Updates & Undo History Stack
-  const pushHistory = useCallback(
-    (pageId: string, currentBubbles: TextObject[]) => {
-      setPages(prev =>
-        prev.map(p => {
-          if (p.id !== pageId) return p;
-          const past = [...p.history.past, currentBubbles.map(b => ({ ...b }))];
-          return {
-            ...p,
-            history: {
-              past: past.slice(-30), // Retain last 30 undo steps
-              future: [],
-            },
-          };
-        })
-      );
-    },
-    []
-  );
-
-  const handleUpdateBubble = useCallback(
-    (updated: TextObject) => {
-      if (!currentPage) return;
-      pushHistory(currentPage.id, currentPage.textObjects);
-      setPages(prev =>
-        prev.map(p => {
-          if (p.id !== currentPage.id) return p;
-          return {
-            ...p,
-            textObjects: p.textObjects.map(b => (b.id === updated.id ? updated : b)),
-          };
-        })
-      );
-    },
-    [currentPage, pushHistory]
-  );
-
-  const handleDeleteBubble = useCallback(
-    (id: string) => {
-      if (!currentPage) return;
-      pushHistory(currentPage.id, currentPage.textObjects);
-      setPages(prev =>
-        prev.map(p => {
-          if (p.id !== currentPage.id) return p;
-          return {
-            ...p,
-            textObjects: p.textObjects.filter(b => b.id !== id),
-          };
-        })
-      );
-      if (selectedBubbleId === id) setSelectedBubbleId(null);
-    },
-    [currentPage, selectedBubbleId, pushHistory]
-  );
-
-  const handleDuplicateBubble = useCallback(
-    (bubble: TextObject) => {
-      if (!currentPage) return;
-      const duplicated: TextObject = {
-        ...bubble,
-        id: `bubble-${Date.now()}`,
-        x: bubble.x + 30,
-        y: bubble.y + 30,
-      };
-      pushHistory(currentPage.id, currentPage.textObjects);
-      setPages(prev =>
-        prev.map(p => {
-          if (p.id !== currentPage.id) return p;
-          return { ...p, textObjects: [...p.textObjects, duplicated] };
-        })
-      );
-      setSelectedBubbleId(duplicated.id);
-    },
-    [currentPage, pushHistory]
-  );
-
-  const handleAddBubble = useCallback(
-    (x: number, y: number) => {
-      if (!currentPage) return;
-      const newBubble: TextObject = {
-        id: `bubble-custom-${Date.now()}`,
-        x,
-        y,
-        width: 140,
-        height: 90,
-        angle: 0,
-        raw_text: '',
-        text: 'NEW DIALOGUE',
-        font: byokConfig.fontDefault || 'Comic Neue',
-        fontSize: 18,
-        autoFit: true,
-        fontColor: '#000000',
-        strokeColor: '#ffffff',
-        strokeWidth: 3.5,
-        strokeDisabled: !byokConfig.strokeEnabled,
-        textAlign: 'center',
-        vertical: false,
-        uppercase: byokConfig.uppercaseDefault,
-        lineHeight: 1.15,
-      };
-      pushHistory(currentPage.id, currentPage.textObjects);
-      setPages(prev =>
-        prev.map(p => {
-          if (p.id !== currentPage.id) return p;
-          return { ...p, textObjects: [...p.textObjects, newBubble] };
-        })
-      );
-      setSelectedBubbleId(newBubble.id);
-      setActiveTool('select');
-    },
-    [currentPage, byokConfig, pushHistory]
-  );
-
-  // Undo / Redo Handlers
-  const handleUndo = useCallback(() => {
-    if (!currentPage || currentPage.history.past.length === 0) return;
-    const previous = currentPage.history.past[currentPage.history.past.length - 1];
-    const newPast = currentPage.history.past.slice(0, -1);
-    const newFuture = [currentPage.textObjects, ...currentPage.history.future];
-
+  const handleUpdateBubble = (updated: TextObject) => {
+    if (!currentPage) return;
     setPages(prev =>
-      prev.map(p => {
-        if (p.id !== currentPage.id) return p;
+      prev.map((p, i) => {
+        if (i !== currentPageIndex) return p;
+        const newObjects = p.textObjects.map(b => (b.id === updated.id ? updated : b));
         return {
           ...p,
-          textObjects: previous,
-          history: { past: newPast, future: newFuture },
+          textObjects: newObjects,
+          history: { past: [...p.history.past, p.textObjects], future: [] },
         };
       })
     );
-  }, [currentPage]);
+  };
+
+  const handleDeleteBubble = useCallback(
+    (bubbleId: string) => {
+      if (!currentPage) return;
+      setPages(prev =>
+        prev.map((p, i) => {
+          if (i !== currentPageIndex) return p;
+          const newObjects = p.textObjects.filter(b => b.id !== bubbleId);
+          return {
+            ...p,
+            textObjects: newObjects,
+            history: { past: [...p.history.past, p.textObjects], future: [] },
+          };
+        })
+      );
+      setSelectedBubbleId(null);
+    },
+    [currentPage, currentPageIndex]
+  );
+
+  const handleDuplicateBubble = (bubbleId: string) => {
+    if (!currentPage) return;
+    const target = currentPage.textObjects.find(b => b.id === bubbleId);
+    if (!target) return;
+    const duplicated: TextObject = {
+      ...target,
+      id: `bubble-${Date.now()}`,
+      x: target.x + 20,
+      y: target.y + 20,
+    };
+    setPages(prev =>
+      prev.map((p, i) => {
+        if (i !== currentPageIndex) return p;
+        return {
+          ...p,
+          textObjects: [...p.textObjects, duplicated],
+          history: { past: [...p.history.past, p.textObjects], future: [] },
+        };
+      })
+    );
+    setSelectedBubbleId(duplicated.id);
+  };
+
+  const handleAddBubble = (coords: { x: number; y: number }) => {
+    if (!currentPage) return;
+    const newBubble: TextObject = {
+      id: `bubble-${Date.now()}`,
+      x: coords.x,
+      y: coords.y,
+      width: 140,
+      height: 90,
+      angle: 0,
+      raw_text: '',
+      text: 'TRANSLATION',
+      font: byokConfig.fontDefault,
+      fontSize: 16,
+      autoFit: true,
+      fontColor: '#000000',
+      strokeColor: '#ffffff',
+      strokeWidth: 3,
+      strokeDisabled: !byokConfig.strokeEnabled,
+      textAlign: 'center',
+      vertical: false,
+      uppercase: byokConfig.uppercaseDefault,
+      lineHeight: 1.15,
+    };
+    setPages(prev =>
+      prev.map((p, i) => {
+        if (i !== currentPageIndex) return p;
+        return {
+          ...p,
+          textObjects: [...p.textObjects, newBubble],
+          history: { past: [...p.history.past, p.textObjects], future: [] },
+        };
+      })
+    );
+    setSelectedBubbleId(newBubble.id);
+  };
+
+  const handleUndo = useCallback(() => {
+    if (!currentPage || currentPage.history.past.length === 0) return;
+    setPages(prev =>
+      prev.map((p, i) => {
+        if (i !== currentPageIndex) return p;
+        const past = [...p.history.past];
+        const previousState = past.pop()!;
+        return {
+          ...p,
+          textObjects: previousState,
+          history: { past, future: [p.textObjects, ...p.history.future] },
+        };
+      })
+    );
+  }, [currentPage, currentPageIndex]);
 
   const handleRedo = useCallback(() => {
     if (!currentPage || currentPage.history.future.length === 0) return;
-    const next = currentPage.history.future[0];
-    const newFuture = currentPage.history.future.slice(1);
-    const newPast = [...currentPage.history.past, currentPage.textObjects];
-
     setPages(prev =>
-      prev.map(p => {
-        if (p.id !== currentPage.id) return p;
+      prev.map((p, i) => {
+        if (i !== currentPageIndex) return p;
+        const future = [...p.history.future];
+        const nextState = future.shift()!;
         return {
           ...p,
-          textObjects: next,
-          history: { past: newPast, future: newFuture },
+          textObjects: nextState,
+          history: { past: [...p.history.past, p.textObjects], future },
         };
       })
     );
-  }, [currentPage]);
+  }, [currentPage, currentPageIndex]);
 
-  // Translate Single Page (Detection + OCR + Inpaint + Typeset)
   const translatePageAtIndex = async (index: number) => {
     const page = pages[index];
     if (!page) return;
-
-    // Previous page narrative context memory
     const prevContext = index > 0 ? pages[index - 1].contextSummary || '' : '';
 
     setPages(prev =>
@@ -314,10 +283,7 @@ export function App() {
     );
 
     try {
-      // 1. Detect Speech Bubbles & OCR & Translation
       const detection = await detectAndTranslateImage(page.originalSrc, byokConfig, prevContext);
-
-      // 2. Erase Text Inside Detected Bubbles (Inpainting)
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise(r => {
@@ -362,7 +328,6 @@ export function App() {
     setIsProcessing(false);
   };
 
-  // Erase & Inpaint Current Page Bubbles Only
   const handleInpaintCurrentPage = async () => {
     if (!currentPage) return;
     setIsProcessing(true);
@@ -388,7 +353,6 @@ export function App() {
     }
   };
 
-  // Translate All Pages Batch Processor
   const handleTranslateAllPages = async () => {
     if (isBatchTranslating || pages.length === 0) return;
     setIsBatchTranslating(true);
@@ -402,7 +366,6 @@ export function App() {
     setIsBatchTranslating(false);
   };
 
-  // File Upload Handlers (Images, ZIP, CBZ, .yomi)
   const handleFilesUpload = async (fileList: FileList | File[]) => {
     const { pages: newPages, projectConfig } = await parseUploadedFiles(fileList, byokConfig);
     if (newPages.length > 0) {
@@ -413,41 +376,6 @@ export function App() {
       updateByokConfig(projectConfig);
     }
   };
-
-  // Global Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs/textareas
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) handleRedo();
-        else handleUndo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-        e.preventDefault();
-        handleRedo();
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedBubbleId) {
-          e.preventDefault();
-          handleDeleteBubble(selectedBubbleId);
-        }
-      } else if (e.key === 'Escape') {
-        setSelectedBubbleId(null);
-      } else if (e.key === 'v' || e.key === 'V') {
-        setActiveTool('select');
-      } else if (e.key === 'b' || e.key === 'B') {
-        setActiveTool('bubble-add');
-      } else if (e.key === 'h' || e.key === 'H') {
-        setActiveTool('pan');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedBubbleId, handleDeleteBubble, handleUndo, handleRedo]);
 
   return (
     <div
@@ -468,7 +396,6 @@ export function App() {
         if (e.dataTransfer.files) handleFilesUpload(e.dataTransfer.files);
       }}
     >
-      {/* Hidden File Input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -481,7 +408,6 @@ export function App() {
         className="hidden"
       />
 
-      {/* Top Application Header */}
       <Header
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
@@ -495,7 +421,6 @@ export function App() {
         onUploadClick={() => fileInputRef.current?.click()}
       />
 
-      {/* Main Workspace Switcher */}
       {currentTab === 'studio' && (
         <main className="flex-1 flex overflow-hidden relative">
           <InteractiveCanvas
@@ -503,14 +428,12 @@ export function App() {
             selectedBubbleId={selectedBubbleId}
             onSelectBubble={setSelectedBubbleId}
             onUpdateBubble={handleUpdateBubble}
-            onAddBubble={handleAddBubble}
+            onAddBubble={(x, y) => handleAddBubble({ x, y })}
             activeTool={activeTool}
             viewMode={viewMode}
             setViewMode={setViewMode}
             brushSize={brushSize}
-            onCommitMaskStroke={() => {
-              /* Inpaint mask stroke committed */
-            }}
+            onCommitMaskStroke={() => {}}
             onUndo={handleUndo}
             onRedo={handleRedo}
             canUndo={Boolean(currentPage && currentPage.history.past.length > 0)}
@@ -522,7 +445,7 @@ export function App() {
             selectedBubble={selectedBubble}
             onUpdateBubble={handleUpdateBubble}
             onDeleteBubble={handleDeleteBubble}
-            onDuplicateBubble={handleDuplicateBubble}
+            onDuplicateBubble={bubble => handleDuplicateBubble(bubble.id)}
             onAddBubbleClick={() => setActiveTool('bubble-add')}
             activeTool={activeTool}
             setActiveTool={setActiveTool}
@@ -538,21 +461,13 @@ export function App() {
       )}
 
       {currentTab === 'reader' && (
-        <ReadingMode
-          pages={pages}
-          onExitReader={() => setCurrentTab('studio')}
-        />
+        <ReadingMode pages={pages} onExitReader={() => setCurrentTab('studio')} />
       )}
 
       {currentTab === 'script' && (
-        <ScriptEditor
-          pages={pages}
-          onUpdatePages={setPages}
-          onExit={() => setCurrentTab('studio')}
-        />
+        <ScriptEditor pages={pages} onUpdatePages={setPages} onExit={() => setCurrentTab('studio')} />
       )}
 
-      {/* Bottom Chapter Thumbnail Carousel */}
       {currentTab === 'studio' && (
         <ThumbnailCarousel
           pages={pages}
@@ -572,7 +487,6 @@ export function App() {
         />
       )}
 
-      {/* Drag & Drop Visual Overlay */}
       {isDraggingFileOver && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-8 border-4 border-dashed border-orange-500 pointer-events-none">
           <UploadCloud className="w-20 h-20 text-orange-400 animate-bounce mb-4" />
@@ -583,7 +497,6 @@ export function App() {
         </div>
       )}
 
-      {/* BYOK Keys Configuration Modal */}
       <BYOKModal
         isOpen={showByokModal}
         onClose={() => setShowByokModal(false)}
@@ -591,18 +504,17 @@ export function App() {
         onSaveConfig={updateByokConfig}
       />
 
-      {/* Shortcuts & Documentation Modal */}
-      <HelpModal
-        isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
-      />
-
-      {/* Extension Installation Modal */}
-      <ExtensionModal
-        isOpen={showExtensionModal}
-        onClose={() => setShowExtensionModal(false)}
-      />
+      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      <ExtensionModal isOpen={showExtensionModal} onClose={() => setShowExtensionModal(false)} />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <MainRouter />
+    </AuthProvider>
   );
 }
 

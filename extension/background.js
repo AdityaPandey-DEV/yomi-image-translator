@@ -44,6 +44,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// Listen for external auth token relay from our companion website
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  // Validate sender URL strictly against production domain
+  const isValidOrigin = sender.url && sender.url.startsWith('https://manga-manhwa-translator.vercel.app');
+
+  if (!isValidOrigin) {
+    sendResponse({ success: false, error: 'Unauthorized sender origin' });
+    return true;
+  }
+
+  if (message.type === 'AUTH_TOKEN' && message.token) {
+    chrome.storage.local.set(
+      {
+        firebaseToken: message.token,
+        userEmail: message.email || '',
+        userName: message.displayName || '',
+        userPhoto: message.photoURL || '',
+        userMode: message.mode || 'private',
+        authTimestamp: Date.now(),
+      },
+      () => {
+        console.log('[Translator] Successfully synced auth token from website!');
+        sendResponse({ success: true, message: 'Extension authenticated successfully!' });
+      }
+    );
+    return true; // Keep channel open
+  }
+
+  if (message.type === 'CHECK_EXTENSION_INSTALLED') {
+    sendResponse({ success: true, version: '1.1.0' });
+    return true;
+  }
+});
+
 // Universal image fetcher converting ArrayBuffer to Base64 in safe 8KB chunks
 async function fetchImageBase64(imageUrl) {
   let base64Data = '';
@@ -102,6 +136,39 @@ CRITICAL RULES:
 // Universal translation router
 async function handleTranslation(data) {
   const { imageUrl, targetLang = 'en', byok = {} } = data;
+
+  // 1. Check if user is authenticated via web account
+  const authState = await new Promise(resolve => {
+    chrome.storage.local.get(['firebaseToken', 'userMode'], resolve);
+  });
+
+  if (authState?.firebaseToken) {
+    try {
+      const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+      const res = await fetch('https://manga-manhwa-translator.vercel.app/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authState.firebaseToken}`,
+        },
+        body: JSON.stringify({
+          imageBase64: base64Data,
+          mimeType,
+          targetLang,
+          provider: byok.activeProvider || 'google',
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.result) {
+        return json.result;
+      }
+      console.warn('[Cloud Translation Proxy] Fallback to direct client call:', json.error);
+    } catch (apiErr) {
+      console.warn('[Cloud Translation Proxy] Network error, checking local fallback:', apiErr);
+    }
+  }
+
   const provider = byok.activeProvider || detectProvider(byok);
 
   switch (provider) {

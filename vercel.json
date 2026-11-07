@@ -3,8 +3,9 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     {
-      "source": "/((?!assets/|favicon|yomi-extension.zip).*)",
+      "source": "/((?!api/|assets/|favicon|manga-manhwa-translator.zip).*)",
       "destination": "/index.html"
     }
   ]

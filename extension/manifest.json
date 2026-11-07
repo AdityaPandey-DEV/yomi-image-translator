@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Manga & Manhwa Image Translator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Instantly translate raw Japanese, Korean, and Chinese manga, manhwa & webtoons in-place with AI.",
   "permissions": [
     "activeTab",
@@ -11,6 +11,11 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "externally_connectable": {
+    "matches": [
+      "https://manga-manhwa-translator.vercel.app/*"
+    ]
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only read/write their own profile document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Users can only read/write their own API keys subcollection
+      match /keys/{keyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Shared keys pool:
+    // - Any authenticated user can READ (to get a pool key for translation)
+    // - Only the key's owner can CREATE, UPDATE, or DELETE
+    match /shared_keys/{keyId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.resource.data.addedBy == request.auth.uid;
+
+      allow update, delete: if request.auth != null
+                            && resource.data.addedBy == request.auth.uid;
+    }
+
+    // Deny everything else by default (implicit)
+  }
+}
+
