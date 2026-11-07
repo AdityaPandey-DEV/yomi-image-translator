@@ -134,3 +134,25 @@
   pointer-events: none !important;
   max-width: 85% !important;
 }
+
+.yomi-hotspot-layer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 10000 !important;
+}
+
+.yomi-bubble-hotspot {
+  position: absolute !important;
+  pointer-events: auto !important;
+  cursor: help !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.yomi-bubble-hotspot:hover {
+  background-color: rgba(249, 115, 22, 0.12) !important;
+}

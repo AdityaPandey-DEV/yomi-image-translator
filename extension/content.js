@@ -280,6 +280,15 @@
       wrapper.appendChild(canvas);
     }
 
+    // Interactive hotspot layer for tooltips showing original text on hover
+    let hotspotLayer = wrapper.querySelector('.yomi-hotspot-layer');
+    if (!hotspotLayer) {
+      hotspotLayer = document.createElement('div');
+      hotspotLayer.className = 'yomi-hotspot-layer';
+      wrapper.appendChild(hotspotLayer);
+    }
+    hotspotLayer.innerHTML = '';
+
     const nw = img.naturalWidth || img.clientWidth || img.width;
     const nh = img.naturalHeight || img.clientHeight || img.height;
 
@@ -292,26 +301,64 @@
       const text = (b.translated_text || '').trim();
       if (!text) return;
 
-      const bw = Math.max(20, b.width);
-      const bh = Math.max(20, b.height);
-      const bx = b.x;
-      const by = b.y;
+      let bx = 0, by = 0, bw = 0, bh = 0;
+
+      // 1. Precise Coordinate Resolution from Google Gemini's box_2d [ymin, xmin, ymax, xmax] (0..1000)
+      if (Array.isArray(b.box_2d) && b.box_2d.length === 4) {
+        const [ymin, xmin, ymax, xmax] = b.box_2d;
+        const top = (ymin / 1000) * nh;
+        const left = (xmin / 1000) * nw;
+        const bottom = (ymax / 1000) * nh;
+        const right = (xmax / 1000) * nw;
+
+        bw = Math.max(24, right - left);
+        bh = Math.max(18, bottom - top);
+        bx = left + (bw / 2);
+        by = top + (bh / 2);
+      } else if (b.x !== undefined && b.y !== undefined) {
+        // Fallback for raw pixel coordinates
+        if (b.x <= 1000 && b.y <= 1000 && (nw > 1000 || nh > 1000)) {
+          bx = (b.x / 1000) * nw;
+          by = (b.y / 1000) * nh;
+          bw = (b.width / 1000) * nw;
+          bh = (b.height / 1000) * nh;
+        } else {
+          bx = b.x;
+          by = b.y;
+          bw = b.width;
+          bh = b.height;
+        }
+      }
+
+      if (bw <= 0 || bh <= 0) return;
+
+      // 2. Intelligent Background Color Detection (Dark speech bubbles vs Light speech bubbles)
+      const isDark =
+        b.background === 'black' ||
+        b.background === 'dark' ||
+        (b.background_color && (b.background_color.includes('black') || b.background_color.includes('dark')));
+
+      const bgColor = isDark ? '#141416' : '#ffffff';
+      const textColor = isDark ? '#ffffff' : '#0f172a';
+      const strokeColor = isDark ? '#000000' : '#ffffff';
 
       ctx.save();
 
-      // Clean speech bubble background
-      ctx.fillStyle = '#ffffff';
+      // 3. Seamless in-place inpainting directly covering the original language text
+      ctx.fillStyle = bgColor;
       ctx.beginPath();
-      ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2);
+      const rx = Math.max(10, (bw / 2) * 0.96);
+      const ry = Math.max(8, (bh / 2) * 0.96);
+      ctx.ellipse(bx, by, rx, ry, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Typeset dialogue with centered multiline word-wrapping
-      let fontSize = Math.max(12, Math.min(24, Math.round(bw / 7.5)));
+      // 4. Typeset dialogue with centered multiline word-wrapping
+      let fontSize = Math.max(11, Math.min(26, Math.round(bw / 7)));
       ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxLineWidth = Math.max(20, bw * 0.82);
+      const maxLineWidth = Math.max(16, bw * 0.82);
       const words = text.split(/\s+/);
       let lines = [];
       let currentLine = '';
@@ -327,9 +374,10 @@
       }
       if (currentLine) lines.push(currentLine);
 
+      // Downscale font size if lines exceed bubble height
       let lineHeight = fontSize * 1.25;
-      if (lines.length * lineHeight > bh * 0.85) {
-        fontSize = Math.max(10, Math.round(fontSize * 0.8));
+      if (lines.length * lineHeight > bh * 0.82) {
+        fontSize = Math.max(9, Math.round(fontSize * (bh * 0.82 / (lines.length * lineHeight))));
         ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
         lineHeight = fontSize * 1.2;
       }
@@ -339,16 +387,30 @@
 
       lines.forEach((line, idx) => {
         const curY = startY + (idx * lineHeight);
-        ctx.strokeStyle = '#ffffff';
+        // Contrast stroke outline for clarity
+        ctx.strokeStyle = strokeColor;
         ctx.lineWidth = 3;
         ctx.lineJoin = 'round';
         ctx.strokeText(line, bx, curY, maxLineWidth);
 
-        ctx.fillStyle = '#0f172a';
+        // Solid lettering
+        ctx.fillStyle = textColor;
         ctx.fillText(line, bx, curY, maxLineWidth);
       });
 
       ctx.restore();
+
+      // 5. Add interactive hover hotspot showing the original foreign text on hover
+      if (b.raw_text) {
+        const hotspot = document.createElement('div');
+        hotspot.className = 'yomi-bubble-hotspot';
+        hotspot.style.left = `${(bx - bw / 2) / nw * 100}%`;
+        hotspot.style.top = `${(by - bh / 2) / nh * 100}%`;
+        hotspot.style.width = `${(bw / nw) * 100}%`;
+        hotspot.style.height = `${(bh / nh) * 100}%`;
+        hotspot.title = `Original: ${b.raw_text}`;
+        hotspotLayer.appendChild(hotspot);
+      }
     });
   }
 

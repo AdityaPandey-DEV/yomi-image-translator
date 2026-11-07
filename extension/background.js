@@ -88,21 +88,23 @@ async function callGeminiVision(imageUrl, targetLang, byok) {
   }
 
   const prompt = `You are Yomi Image Translator.
-Analyze this comic/manga/webtoon page. Locate all dialogue speech bubbles and narrations.
-Translate each dialogue accurately into ${targetLang}.
+Analyze this comic/manga/webtoon page. Locate every speech bubble and text dialogue.
+Translate all dialogue accurately into ${targetLang}.
 Return JSON only:
 {
   "bubbles": [
     {
-      "x": <center X pixel coordinate>,
-      "y": <center Y pixel coordinate>,
-      "width": <bubble width in pixels>,
-      "height": <bubble height in pixels>,
-      "raw_text": "<original text>",
-      "translated_text": "<natural translation in UPPERCASE or title casing>"
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "raw_text": "<original foreign text in bubble>",
+      "translated_text": "<natural translation in UPPERCASE>",
+      "background": "white" | "black" | "dark" | "transparent"
     }
   ]
-}`;
+}
+CRITICAL RULES FOR BOX_2D:
+- Use [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 integer grid directly framing the speech bubble interior.
+- Detect both normal white bubbles and dramatic dark/black speech bubbles.
+- Ensure the bounding box tightly encompasses the original text so the translated text covers it perfectly.`;
 
   async function executeGeminiRequest(modelName, includeThinkingConfig = true) {
     const genConfig = {
