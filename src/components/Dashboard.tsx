@@ -106,6 +106,7 @@ export function Dashboard() {
 
   // Mode switching
   const [modeLoading, setModeLoading] = useState(false);
+  const [idTokenString, setIdTokenString] = useState<string>('');
 
   // Add key form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -196,6 +197,7 @@ export function Dashboard() {
       try {
         const token = await getIdToken();
         if (token) {
+          setIdTokenString(token);
           await sendTokenToExtension(
             token,
             user.email || '',
@@ -274,7 +276,18 @@ export function Dashboard() {
   // ----- Render -----
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
+    <div className="min-h-screen bg-neutral-950 text-white pb-20">
+      {/* Invisible DOM Bridge for Content Script Sync */}
+      <div
+        id="mmt-auth-bridge"
+        style={{ display: 'none' }}
+        data-token={idTokenString}
+        data-email={user?.email || ''}
+        data-name={profile?.displayName || user?.displayName || ''}
+        data-photo={user?.photoURL || ''}
+        data-mode={currentMode}
+      />
+
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
 
         {/* ===== Section 1: Profile Card ===== */}

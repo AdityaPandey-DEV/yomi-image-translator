@@ -6,6 +6,41 @@
   // Companion Website Bridge (manga-manhwa-translator.vercel.app)
   // ============================================================
   if (window.location.origin === 'https://manga-manhwa-translator.vercel.app') {
+    function trySyncFromDom() {
+      const bridge = document.getElementById('mmt-auth-bridge');
+      if (bridge && bridge.dataset.token) {
+        chrome.runtime.sendMessage({
+          action: 'AUTH_TOKEN',
+          token: bridge.dataset.token,
+          email: bridge.dataset.email || '',
+          displayName: bridge.dataset.name || '',
+          photoURL: bridge.dataset.photo || '',
+          mode: bridge.dataset.mode || 'private',
+        });
+        return true;
+      }
+      return false;
+    }
+
+    // Immediate DOM check
+    trySyncFromDom();
+
+    // DOM Mutation observer to catch token as soon as React sets it
+    const domObserver = new MutationObserver(() => {
+      trySyncFromDom();
+    });
+
+    if (document.body) {
+      domObserver.observe(document.body, { childList: true, subtree: true, attributes: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        trySyncFromDom();
+        if (document.body) {
+          domObserver.observe(document.body, { childList: true, subtree: true, attributes: true });
+        }
+      });
+    }
+
     // 1. Listen for window messages from the web app
     window.addEventListener('message', event => {
       if (event.source !== window || event.origin !== 'https://manga-manhwa-translator.vercel.app') return;
@@ -39,8 +74,11 @@
     // 2. Listen for messages from background/popup requesting auth from webpage
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'REQUEST_AUTH_FROM_PAGE') {
-        window.postMessage({ type: 'MMT_REQUEST_AUTH' }, 'https://manga-manhwa-translator.vercel.app');
-        sendResponse({ initiated: true });
+        const synced = trySyncFromDom();
+        if (!synced) {
+          window.postMessage({ type: 'MMT_REQUEST_AUTH' }, 'https://manga-manhwa-translator.vercel.app');
+        }
+        sendResponse({ success: true, syncedFromDom: synced });
         return true;
       }
     });

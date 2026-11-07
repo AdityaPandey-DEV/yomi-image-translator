@@ -90,12 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Request auth from the open tab's content script
         chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_AUTH_FROM_PAGE' }, () => {
-          if (chrome.runtime.lastError) {
-            // Content script might be loading
-            setTimeout(checkTokenAgain, 800);
-          } else {
-            setTimeout(checkTokenAgain, 500);
-          }
+          checkTokenAgain();
+          setTimeout(checkTokenAgain, 150);
+          setTimeout(checkTokenAgain, 400);
+          setTimeout(checkTokenAgain, 900);
         });
       } else {
         if (syncDetectionStatus) {
