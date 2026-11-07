@@ -65,6 +65,10 @@ async function callGeminiVision(imageUrl, targetLang, byok) {
   const apiKey = byok.googleApiKey.trim();
   let requestedModel = byok.googleModel || 'gemini-2.5-flash';
 
+  if (requestedModel === 'auto') {
+    requestedModel = await discoverBestFlashModel(apiKey);
+  }
+
   // Extract base64
   let base64Data = '';
   let mimeType = 'image/jpeg';
@@ -189,14 +193,16 @@ async function discoverBestFlashModel(apiKey) {
         .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
         .map(m => m.name.replace('models/', ''));
 
-      // Prefer 2.5-flash, 2.0-flash, or 1.5-flash-latest
+      // Prefer latest flash models: 3.x, 2.5, 2.0, 1.5
       const flashModels = models.filter(m => m.includes('flash'));
       if (flashModels.length > 0) {
+        flashModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
         cachedValidModels = flashModels;
         lastModelCheckTime = now;
         return flashModels[0];
       }
       if (models.length > 0) {
+        models.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
         cachedValidModels = models;
         lastModelCheckTime = now;
         return models[0];

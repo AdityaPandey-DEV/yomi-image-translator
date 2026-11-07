@@ -16,6 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
       targetLangSelect.value = data.targetLang;
     }
     if (data.byok?.googleModel) {
+      const exists = Array.from(geminiModelSelect.options).some(o => o.value === data.byok.googleModel);
+      if (!exists) {
+        const customOpt = document.createElement('option');
+        customOpt.value = data.byok.googleModel;
+        customOpt.textContent = `${data.byok.googleModel} (Current)`;
+        geminiModelSelect.insertBefore(customOpt, geminiModelSelect.firstChild);
+      }
       geminiModelSelect.value = data.byok.googleModel;
     }
     if (data.byok?.googleApiKey) {

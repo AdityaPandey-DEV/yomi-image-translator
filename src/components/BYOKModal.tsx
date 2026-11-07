@@ -158,8 +158,17 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Latest & Best)</option>
+                    <option value="gemini-3.1-flash">Gemini 3.1 Flash (Latest Next-Gen)</option>
+                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Ultra Fast)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
+                    <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
+                    <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                     <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                    <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Classic)</option>
                     <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                   </select>
                 </div>

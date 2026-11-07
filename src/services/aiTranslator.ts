@@ -83,6 +83,14 @@ Output strictly valid JSON with this exact schema:
   ]
 }`;
 
+  const genConfig: any = {
+    response_mime_type: 'application/json',
+    temperature: 0.2,
+  };
+  if (model.includes('2.5') || model.includes('3.')) {
+    genConfig.thinking_config = { thinking_budget: 0 };
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
@@ -102,10 +110,7 @@ Output strictly valid JSON with this exact schema:
             ],
           },
         ],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.2,
-        },
+        generationConfig: genConfig,
       }),
     }
   );
