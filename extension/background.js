@@ -1,10 +1,10 @@
-// Yomi Image Translator - Background Service Worker (Manifest V3)
+// Manga & Manhwa Image Translator - Background Service Worker (Manifest V3)
 // Clean-room, high-speed multimodal vision pipeline with self-healing Gemini 3.8 Flash engine.
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'yomi-translate-image',
-    title: 'Translate Image with Yomi (Gemini 3.8 Flash)',
+    title: 'Translate Manga Image with AI',
     contexts: ['image'],
   });
 });

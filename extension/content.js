@@ -1,4 +1,4 @@
-// Yomi Image Translator - Professional Content Script v2.3.0
+// Manga & Manhwa Image Translator - Content Script v1.0.0
 // Features: Queue-based rate limiting, zero-flicker DOM isolation, anti-infinite-loop guards.
 
 (() => {
