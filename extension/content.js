@@ -1,12 +1,21 @@
-// Yomi Image Translator - Content Script v2.2.0
-// Clean-room, high-performance in-place overlay & comic typesetting.
+// Yomi Image Translator - Professional Content Script v2.3.0
+// Features: Queue-based rate limiting, zero-flicker DOM isolation, anti-infinite-loop guards.
 
 (() => {
+  // Constants & State
+  const WRAPPER_CLASS = 'yomi-manga-wrapper';
   const PROCESSED_ATTR = 'data-yomi-processed';
+  
   let autoTranslate = false;
   let targetLang = 'en';
   let byok = {};
+  
+  // Rate-limiting queue to stay well under Gemini Free Tier limits (15 requests/min)
+  const translationQueue = [];
+  let isQueueProcessing = false;
+  let isRateLimitedUntil = 0;
 
+  // Load extension settings from storage
   function loadSettings() {
     chrome.storage.sync.get(['autoTranslate', 'targetLang', 'byok'], data => {
       autoTranslate = Boolean(data?.autoTranslate);
@@ -17,37 +26,52 @@
   loadSettings();
   chrome.storage.onChanged.addListener(() => loadSettings());
 
-  // Scroll observer for auto-translating manga strips on scroll
+  // Debounce helper
+  function debounce(fn, ms) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  // Viewport scroll observer: Enqueues images only when they enter active screen
   const scrollObserver = new IntersectionObserver(
     entries => {
       if (!autoTranslate) return;
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const img = entry.target;
-          if (img.dataset.yomiGate === 'true' && !img.dataset.yomiTranslated && !img.dataset.yomiLoading) {
-            triggerTranslation(img);
+          const state = img.dataset.yomiState;
+          // Only enqueue if never processed and never failed
+          if (!state || state === 'idle') {
+            enqueueTranslation(img);
           }
         }
       });
     },
-    { rootMargin: '300px 0px' }
+    { rootMargin: '100px 0px' }
   );
 
+  // Scan page for manga/comic images without touching yomi elements
   function scanImages() {
     const images = document.querySelectorAll(`img:not([${PROCESSED_ATTR}])`);
     images.forEach(img => {
-      const w = img.clientWidth || img.naturalWidth;
-      const h = img.clientHeight || img.naturalHeight;
+      // Ignore avatars, icons, badges, and images inside our own wrapper
+      if (img.closest(`.${WRAPPER_CLASS}`) || img.closest('[class*="yomi-"]')) return;
 
-      if (w > 260 && h > 260) {
+      const w = img.naturalWidth || img.clientWidth;
+      const h = img.naturalHeight || img.clientHeight;
+
+      if (w > 280 && h > 280) {
         attachYomiGate(img);
-      } else {
+      } else if (!img.complete) {
         img.addEventListener(
           'load',
           () => {
             const nw = img.naturalWidth;
             const nh = img.naturalHeight;
-            if (nw > 260 && nh > 260) attachYomiGate(img);
+            if (nw > 280 && nh > 280) attachYomiGate(img);
           },
           { once: true }
         );
@@ -57,114 +81,198 @@
 
   function attachYomiGate(img) {
     if (img.getAttribute(PROCESSED_ATTR)) return;
-    img.setAttribute(PROCESSED_ATTR, 'true');
+    if (img.closest(`.${WRAPPER_CLASS}`)) return;
 
-    // Create positioned wrapper
+    img.setAttribute(PROCESSED_ATTR, 'true');
+    img.dataset.yomiState = 'idle';
+
+    // Temporarily pause mutation observer to avoid self-triggering flickering loop
+    mutationObserver.disconnect();
+
     const wrapper = document.createElement('div');
-    wrapper.className = 'yomi-manga-wrapper';
+    wrapper.className = WRAPPER_CLASS;
     img.parentNode.insertBefore(wrapper, img);
     wrapper.appendChild(img);
 
-    // Floating Translate Gate Button
+    // Floating Translate Action Button
     const gateBtn = document.createElement('button');
     gateBtn.className = 'yomi-gate-button';
-    gateBtn.title = 'Translate with Yomi Image Translator';
+    gateBtn.title = 'Translate with Yomi AI';
     gateBtn.innerHTML = `
       <svg class="yomi-gate-svg" viewBox="0 0 24 24">
         <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
       </svg>
-      <span class="yomi-gate-text">Translate</span>
+      <span class="yomi-btn-label">Translate</span>
     `;
 
     gateBtn.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
-      triggerTranslation(img, wrapper, gateBtn);
+      manualTrigger(img, wrapper, gateBtn);
     });
 
     wrapper.appendChild(gateBtn);
-    img.dataset.yomiGate = 'true';
+
+    // Reconnect mutation observer
+    startMutationObserver();
 
     scrollObserver.observe(img);
   }
 
-  async function triggerTranslation(img, wrapperParam, gateBtnParam) {
-    const wrapper = wrapperParam || img.closest('.yomi-manga-wrapper');
-    const gateBtn = gateBtnParam || wrapper?.querySelector('.yomi-gate-button');
+  // Manual click on button
+  function manualTrigger(img, wrapper, gateBtn) {
+    const state = img.dataset.yomiState;
 
-    // If already translated, toggle between translated overlay and original image
-    if (img.dataset.yomiTranslated === 'true') {
-      const overlay = wrapper?.querySelector('.yomi-overlay-canvas');
-      const toggleBadge = wrapper?.querySelector('.yomi-toggle-badge');
+    // Toggle between translated & raw if already finished
+    if (state === 'done') {
+      const overlay = wrapper.querySelector('.yomi-overlay-canvas');
+      const toggleBadge = wrapper.querySelector('.yomi-toggle-badge');
       if (overlay) {
         const isHidden = overlay.style.display === 'none';
         overlay.style.display = isHidden ? 'block' : 'none';
         if (toggleBadge) toggleBadge.innerText = isHidden ? 'Translated (Click for Raw)' : 'Raw Scan (Click to Translate)';
-        if (gateBtn) gateBtn.classList.toggle('yomi-active', isHidden);
+        gateBtn.classList.toggle('yomi-active', isHidden);
       }
       return;
     }
 
-    if (img.dataset.yomiLoading === 'true') return;
-    img.dataset.yomiLoading = 'true';
+    // Reset failed state if user manually retries
+    if (state === 'error') {
+      img.dataset.yomiState = 'idle';
+    }
+
+    enqueueTranslation(img, true); // priority enqueue
+  }
+
+  // Enqueue an image for controlled sequential processing
+  function enqueueTranslation(img, highPriority = false) {
+    if (img.dataset.yomiState === 'queued' || img.dataset.yomiState === 'loading' || img.dataset.yomiState === 'done') {
+      return;
+    }
+
+    img.dataset.yomiState = 'queued';
+    const wrapper = img.closest(`.${WRAPPER_CLASS}`);
+    const gateBtn = wrapper?.querySelector('.yomi-gate-button');
+    if (gateBtn) {
+      gateBtn.classList.add('yomi-queued');
+      const label = gateBtn.querySelector('.yomi-btn-label');
+      if (label) label.innerText = 'Queued...';
+    }
+
+    if (highPriority) {
+      translationQueue.unshift(img);
+    } else {
+      translationQueue.push(img);
+    }
+
+    processQueue();
+  }
+
+  // Process queue 1 image at a time with respectful pacing (2s spacing)
+  async function processQueue() {
+    if (isQueueProcessing) return;
+    if (translationQueue.length === 0) return;
+
+    // If temporarily rate limited by Gemini, pause queue
+    const now = Date.now();
+    if (now < isRateLimitedUntil) {
+      const waitSeconds = Math.ceil((isRateLimitedUntil - now) / 1000);
+      setTimeout(processQueue, Math.min(waitSeconds * 1000, 5000));
+      return;
+    }
+
+    isQueueProcessing = true;
+    const img = translationQueue.shift();
+
+    if (!img || !document.contains(img)) {
+      isQueueProcessing = false;
+      processQueue();
+      return;
+    }
+
+    await executeImageTranslation(img);
+
+    isQueueProcessing = false;
+
+    // Respectful delay between successive calls to avoid 429 quota exhaustion
+    setTimeout(processQueue, 2000);
+  }
+
+  async function executeImageTranslation(img) {
+    const wrapper = img.closest(`.${WRAPPER_CLASS}`);
+    const gateBtn = wrapper?.querySelector('.yomi-gate-button');
+    const label = gateBtn?.querySelector('.yomi-btn-label');
+
+    img.dataset.yomiState = 'loading';
 
     if (gateBtn) {
+      gateBtn.classList.remove('yomi-queued');
       gateBtn.classList.add('yomi-loading');
-      gateBtn.innerHTML = `<div class="yomi-spinner"></div><span>Translating...</span>`;
+      if (label) label.innerText = 'Translating...';
     }
 
     try {
       const src = img.currentSrc || img.src;
 
-      chrome.runtime.sendMessage(
-        {
-          action: 'TRANSLATE_PAYLOAD',
-          data: {
-            imageUrl: src,
-            targetLang,
-            byok,
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          {
+            action: 'TRANSLATE_PAYLOAD',
+            data: { imageUrl: src, targetLang, byok },
           },
-        },
-        response => {
-          img.dataset.yomiLoading = 'false';
-
-          if (response?.success && response.result?.bubbles) {
-            renderOverlay(img, wrapper, response.result.bubbles);
-            img.dataset.yomiTranslated = 'true';
-
-            if (gateBtn) {
-              gateBtn.classList.remove('yomi-loading');
-              gateBtn.classList.add('yomi-active');
-              gateBtn.innerHTML = `
-                <svg class="yomi-gate-svg" viewBox="0 0 24 24">
-                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                </svg>
-                <span>Translated</span>
-              `;
-            }
-
-            attachToggleBadge(wrapper, img);
-          } else {
-            const errorMsg = response?.error || 'Translation failed';
-            showNotice(wrapper, `Yomi Notice: ${errorMsg}`);
-            if (gateBtn) {
-              gateBtn.classList.remove('yomi-loading');
-              gateBtn.innerHTML = `<span>Retry</span>`;
+          res => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(res);
             }
           }
+        );
+      });
+
+      if (response?.success && response.result?.bubbles) {
+        img.dataset.yomiState = 'done';
+        renderOverlay(img, wrapper, response.result.bubbles);
+
+        if (gateBtn) {
+          gateBtn.classList.remove('yomi-loading');
+          gateBtn.classList.add('yomi-active');
+          if (label) label.innerText = 'Translated';
         }
-      );
+
+        attachToggleBadge(wrapper, img);
+      } else {
+        const errorMsg = response?.error || 'Translation failed';
+        img.dataset.yomiState = 'error';
+
+        // Check if rate limited
+        if (errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('rate-limit') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
+          isRateLimitedUntil = Date.now() + 35000; // Pause for 35 seconds
+          showToast(wrapper, '⏳ Gemini Rate Limit: Free Tier limit reached. Pausing for 35s...', 8000);
+        } else {
+          showToast(wrapper, `Yomi: ${errorMsg}`, 5000);
+        }
+
+        if (gateBtn) {
+          gateBtn.classList.remove('yomi-loading', 'yomi-queued');
+          if (label) label.innerText = 'Retry';
+        }
+      }
     } catch (err) {
       console.warn('[Yomi]', err);
-      img.dataset.yomiLoading = 'false';
+      img.dataset.yomiState = 'error';
+      showToast(wrapper, 'Yomi: Translation failed. Click Retry.', 4000);
+
       if (gateBtn) {
-        gateBtn.classList.remove('yomi-loading');
-        gateBtn.innerHTML = `<span>Retry</span>`;
+        gateBtn.classList.remove('yomi-loading', 'yomi-queued');
+        if (label) label.innerText = 'Retry';
       }
     }
   }
 
   function renderOverlay(img, wrapper, bubbles) {
+    if (!wrapper || !bubbles || bubbles.length === 0) return;
+
     let canvas = wrapper.querySelector('.yomi-overlay-canvas');
     if (!canvas) {
       canvas = document.createElement('canvas');
@@ -191,13 +299,13 @@
 
       ctx.save();
 
-      // 1. Inpaint bubble background cleanly
+      // Clean speech bubble background
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.ellipse(bx, by, bw / 2, bh / 2, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Typeset translated text inside bubble with multiline wrapping
+      // Typeset dialogue with centered multiline word-wrapping
       let fontSize = Math.max(12, Math.min(24, Math.round(bw / 7.5)));
       ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
       ctx.textAlign = 'center';
@@ -219,7 +327,6 @@
       }
       if (currentLine) lines.push(currentLine);
 
-      // Adjust font size if total text exceeds height
       let lineHeight = fontSize * 1.25;
       if (lines.length * lineHeight > bh * 0.85) {
         fontSize = Math.max(10, Math.round(fontSize * 0.8));
@@ -232,13 +339,11 @@
 
       lines.forEach((line, idx) => {
         const curY = startY + (idx * lineHeight);
-        // White halo stroke for maximum clarity
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.lineJoin = 'round';
         ctx.strokeText(line, bx, curY, maxLineWidth);
 
-        // Crisp black lettering
         ctx.fillStyle = '#0f172a';
         ctx.fillText(line, bx, curY, maxLineWidth);
       });
@@ -269,38 +374,63 @@
     wrapper.appendChild(badge);
   }
 
-  function showNotice(wrapper, message) {
-    const existing = wrapper.querySelector('.yomi-notice-pill');
+  function showToast(wrapper, message, duration = 4000) {
+    const existing = wrapper?.querySelector('.yomi-toast-banner');
     if (existing) existing.remove();
 
-    const pill = document.createElement('div');
-    pill.className = 'yomi-notice-pill';
-    pill.innerText = message;
-    wrapper.appendChild(pill);
+    const toast = document.createElement('div');
+    toast.className = 'yomi-toast-banner';
+    toast.innerText = message;
+    wrapper?.appendChild(toast);
 
     setTimeout(() => {
-      pill.style.opacity = '0';
-      setTimeout(() => pill.remove(), 400);
-    }, 4000);
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-6px)';
+      setTimeout(() => toast.remove(), 400);
+    }, duration);
   }
 
-  // Observe dynamically loaded images (infinite scroll manga readers)
-  const mutationObserver = new MutationObserver(() => scanImages());
-  mutationObserver.observe(document.body, { childList: true, subtree: true });
+  // MutationObserver with strict filtering and debounce to avoid infinite loop
+  let mutationObserver;
+  const debouncedScan = debounce(scanImages, 300);
 
-  // Initial pass
+  function startMutationObserver() {
+    if (!mutationObserver) {
+      mutationObserver = new MutationObserver(mutations => {
+        let hasRelevantMutation = false;
+        for (const m of mutations) {
+          // Ignore any DOM change created by our own yomi elements
+          if (m.target?.nodeType === 1) {
+            const el = m.target;
+            if (el.classList?.contains(WRAPPER_CLASS) || el.className?.toString().includes('yomi-')) {
+              continue;
+            }
+          }
+          hasRelevantMutation = true;
+          break;
+        }
+        if (hasRelevantMutation) {
+          debouncedScan();
+        }
+      });
+    }
+
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  startMutationObserver();
   scanImages();
 
-  // Listen for context menu triggers
+  // Context Menu trigger
   chrome.runtime.onMessage.addListener(request => {
     if (request.action === 'TRANSLATE_IMAGE_SRC') {
       const match = Array.from(document.querySelectorAll('img')).find(
         i => (i.currentSrc || i.src) === request.srcUrl
       );
       if (match) {
-        const wrapper = match.closest('.yomi-manga-wrapper');
+        const wrapper = match.closest(`.${WRAPPER_CLASS}`);
         const gateBtn = wrapper?.querySelector('.yomi-gate-button');
-        triggerTranslation(match, wrapper, gateBtn);
+        manualTrigger(match, wrapper, gateBtn);
       }
     }
   });

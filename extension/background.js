@@ -1,10 +1,10 @@
 // Yomi Image Translator - Background Service Worker (Manifest V3)
-// Clean-room, high-speed multimodal vision pipeline with zero external trackers.
+// Clean-room, high-speed multimodal vision pipeline with self-healing Gemini 3.8 Flash engine.
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'yomi-translate-image',
-    title: 'Translate Image with Yomi',
+    title: 'Translate Image with Yomi (Gemini 3.8 Flash)',
     contexts: ['image'],
   });
 });
@@ -63,10 +63,11 @@ function bufferToBase64(buffer) {
 
 async function callGeminiVision(imageUrl, targetLang, byok) {
   const apiKey = byok.googleApiKey.trim();
-  let requestedModel = byok.googleModel || 'gemini-2.5-flash';
+  let requestedModel = byok.googleModel || 'gemini-3.8-flash';
 
-  if (requestedModel === 'auto') {
-    requestedModel = await discoverBestFlashModel(apiKey);
+  // Auto-upgrade legacy deprecated 2.5 default to latest Gemini 3.8 Flash
+  if (requestedModel === 'gemini-2.5-flash' || requestedModel === 'auto' || !requestedModel) {
+    requestedModel = 'gemini-3.8-flash';
   }
 
   // Extract base64
@@ -87,9 +88,9 @@ async function callGeminiVision(imageUrl, targetLang, byok) {
   }
 
   const prompt = `You are Yomi Image Translator.
-Analyze this manga/comic/webtoon image. Locate every speech bubble and text dialogue.
-Translate all text into ${targetLang}.
-Respond with valid JSON only in this exact format:
+Analyze this comic/manga/webtoon page. Locate all dialogue speech bubbles and narrations.
+Translate each dialogue accurately into ${targetLang}.
+Return JSON only:
 {
   "bubbles": [
     {
@@ -106,10 +107,15 @@ Respond with valid JSON only in this exact format:
   async function executeGeminiRequest(modelName, includeThinkingConfig = true) {
     const genConfig = {
       response_mime_type: 'application/json',
-      temperature: 0.2,
     };
+
+    // Google Gemini 3.x and 2.5 Flash models support thinking_budget: 0 to disable thinking delays
     if (includeThinkingConfig && (modelName.includes('2.5') || modelName.includes('3.'))) {
       genConfig.thinking_config = { thinking_budget: 0 };
+    }
+
+    if (!modelName.includes('3.8')) {
+      genConfig.temperature = 0.2;
     }
 
     const res = await fetch(
@@ -147,25 +153,46 @@ Respond with valid JSON only in this exact format:
   try {
     responseJson = await executeGeminiRequest(requestedModel, true);
   } catch (err) {
-    const errMsg = err.message || '';
-    // If thinking_config was rejected (HTTP 400), retry without thinking_config immediately
-    if (errMsg.includes('thinking_config') || errMsg.includes('thinkingBudget')) {
+    const errMsg = (err.message || String(err)).toLowerCase();
+    console.warn(`[Yomi] Attempt with ${requestedModel} failed: ${err.message}`);
+
+    // Case 1: thinking_config rejected (e.g. 400 Bad Request)
+    if (errMsg.includes('thinking_config') || errMsg.includes('thinkingbudget') || errMsg.includes('invalid argument')) {
       try {
         responseJson = await executeGeminiRequest(requestedModel, false);
       } catch (retryErr) {
-        throw retryErr;
+        // Will continue to fallback logic below
       }
-    } else if (errMsg.includes('not found') || errMsg.includes('404') || errMsg.includes('not supported')) {
-      // Model not found - dynamically discover available models for this user's API key
-      const fallbackModel = await discoverBestFlashModel(apiKey);
-      console.log(`[Yomi] Model ${requestedModel} not found, falling back to ${fallbackModel}`);
-      responseJson = await executeGeminiRequest(fallbackModel, false);
-    } else {
-      throw err;
+    }
+
+    // Case 2: Model unavailable, deprecated, or Google suggested another model
+    if (!responseJson) {
+      // Check if error message explicitly suggested a model (e.g. "update your code to use models/gemini-3.8-flash")
+      const suggestedMatch = err.message.match(/models\/([a-zA-Z0-9\.\-_]+)/);
+      let fallbackModel = suggestedMatch ? suggestedMatch[1] : null;
+
+      if (!fallbackModel || fallbackModel === requestedModel) {
+        fallbackModel = await discoverBestFlashModel(apiKey);
+      }
+
+      console.log(`[Yomi Auto-Heal] Switching model from ${requestedModel} to ${fallbackModel}`);
+      try {
+        responseJson = await executeGeminiRequest(fallbackModel, true);
+      } catch (fbErr) {
+        // Retry fallback without thinking config if needed
+        responseJson = await executeGeminiRequest(fallbackModel, false);
+      }
+
+      // Automatically persist working model to chrome.storage
+      chrome.storage.sync.get(['byok'], existing => {
+        const byokData = existing.byok || {};
+        byokData.googleModel = fallbackModel;
+        chrome.storage.sync.set({ byok: byokData });
+      });
     }
   }
 
-  const rawText = responseJson.candidates?.[0]?.content?.parts?.[0]?.text;
+  const rawText = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) throw new Error('Gemini returned an empty response.');
 
   let cleaned = rawText.trim();
@@ -193,26 +220,29 @@ async function discoverBestFlashModel(apiKey) {
         .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
         .map(m => m.name.replace('models/', ''));
 
-      // Prefer latest flash models: 3.x, 2.5, 2.0, 1.5
-      const flashModels = models.filter(m => m.includes('flash'));
+      // Filter out deprecated models
+      const activeModels = models.filter(m => !m.includes('2.5-flash'));
+
+      // Prefer 3.8-flash, 3.5-flash, 3.1-flash, 2.0-flash
+      const flashModels = activeModels.filter(m => m.includes('flash'));
       if (flashModels.length > 0) {
         flashModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
         cachedValidModels = flashModels;
         lastModelCheckTime = now;
         return flashModels[0];
       }
-      if (models.length > 0) {
-        models.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
-        cachedValidModels = models;
+      if (activeModels.length > 0) {
+        activeModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
+        cachedValidModels = activeModels;
         lastModelCheckTime = now;
-        return models[0];
+        return activeModels[0];
       }
     }
   } catch (err) {
     console.warn('[Yomi] Failed to query dynamic model list:', err);
   }
 
-  return 'gemini-2.0-flash';
+  return 'gemini-3.8-flash';
 }
 
 async function callOpenAIVision(imageUrl, targetLang, byok) {

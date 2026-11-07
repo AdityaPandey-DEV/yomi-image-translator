@@ -25,7 +25,7 @@ import { UploadCloud, Sparkles, FolderArchive, ArrowRight } from 'lucide-react';
 const DEFAULT_BYOK_CONFIG: BYOKConfig = {
   activeProvider: 'google',
   googleApiKey: '',
-  googleModel: 'gemini-2.0-flash',
+  googleModel: 'gemini-3.8-flash',
   openaiApiKey: '',
   openaiModel: 'gpt-4o',
   anthropicApiKey: '',

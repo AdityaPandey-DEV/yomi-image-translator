@@ -16,14 +16,23 @@ document.addEventListener('DOMContentLoaded', () => {
       targetLangSelect.value = data.targetLang;
     }
     if (data.byok?.googleModel) {
-      const exists = Array.from(geminiModelSelect.options).some(o => o.value === data.byok.googleModel);
+      let savedModel = data.byok.googleModel;
+      if (savedModel === 'gemini-2.5-flash') {
+        savedModel = 'gemini-3.8-flash';
+        chrome.storage.sync.get(['byok'], existing => {
+          const b = existing.byok || {};
+          b.googleModel = 'gemini-3.8-flash';
+          chrome.storage.sync.set({ byok: b });
+        });
+      }
+      const exists = Array.from(geminiModelSelect.options).some(o => o.value === savedModel);
       if (!exists) {
         const customOpt = document.createElement('option');
-        customOpt.value = data.byok.googleModel;
-        customOpt.textContent = `${data.byok.googleModel} (Current)`;
+        customOpt.value = savedModel;
+        customOpt.textContent = `${savedModel} (Custom)`;
         geminiModelSelect.insertBefore(customOpt, geminiModelSelect.firstChild);
       }
-      geminiModelSelect.value = data.byok.googleModel;
+      geminiModelSelect.value = savedModel;
     }
     if (data.byok?.googleApiKey) {
       geminiKeyInput.value = data.byok.googleApiKey;
