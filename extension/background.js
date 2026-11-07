@@ -1,16 +1,16 @@
-// Manga & Manhwa Image Translator - Background Service Worker (Manifest V3)
-// Clean-room, high-speed multimodal vision pipeline with self-healing Gemini 3.8 Flash engine.
+// Manga & Manhwa Image Translator - Universal Background Service Worker (Manifest V3)
+// Multimodal vision translation pipeline supporting Google Gemini, OpenRouter, OpenAI, Claude, Groq & DeepSeek.
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'yomi-translate-image',
+    id: 'translate-manga-image',
     title: 'Translate Manga Image with AI',
     contexts: ['image'],
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'yomi-translate-image' && tab?.id && info.srcUrl) {
+  if (info.menuItemId === 'translate-manga-image' && tab?.id && info.srcUrl) {
     chrome.tabs.sendMessage(tab.id, {
       action: 'TRANSLATE_IMAGE_SRC',
       srcUrl: info.srcUrl,
@@ -28,49 +28,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleTranslation(request.data)
       .then(result => sendResponse({ success: true, result }))
       .catch(err => {
-        console.error('[Yomi Background]', err);
+        console.error('[Translator Background]', err);
         sendResponse({ success: false, error: err.message || String(err) });
       });
     return true; // Keep channel open for async response
   }
+
+  if (request.action === 'TEST_API_KEY') {
+    testApiKey(request.data)
+      .then(result => sendResponse(result))
+      .catch(err => {
+        sendResponse({ success: false, error: err.message || String(err) });
+      });
+    return true;
+  }
 });
 
-async function handleTranslation(data) {
-  const { imageUrl, targetLang = 'en', byok = {} } = data;
-
-  if (byok.googleApiKey) {
-    return await callGeminiVision(imageUrl, targetLang, byok);
-  }
-
-  if (byok.openaiApiKey) {
-    return await callOpenAIVision(imageUrl, targetLang, byok);
-  }
-
-  return mockMangaDetection(targetLang);
-}
-
-// Convert ArrayBuffer to Base64 in safe 8KB chunks to prevent stack overflow
-function bufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  const CHUNK_SIZE = 8192;
-  for (let i = 0; i < len; i += CHUNK_SIZE) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK_SIZE, len)));
-  }
-  return btoa(binary);
-}
-
-async function callGeminiVision(imageUrl, targetLang, byok) {
-  const apiKey = byok.googleApiKey.trim();
-  let requestedModel = byok.googleModel || 'gemini-3.8-flash';
-
-  // Auto-upgrade legacy deprecated 2.5 default to latest Gemini 3.8 Flash
-  if (requestedModel === 'gemini-2.5-flash' || requestedModel === 'auto' || !requestedModel) {
-    requestedModel = 'gemini-3.8-flash';
-  }
-
-  // Extract base64
+// Universal image fetcher converting ArrayBuffer to Base64 in safe 8KB chunks
+async function fetchImageBase64(imageUrl) {
   let base64Data = '';
   let mimeType = 'image/jpeg';
 
@@ -87,31 +62,110 @@ async function callGeminiVision(imageUrl, targetLang, byok) {
     base64Data = bufferToBase64(buffer);
   }
 
-  const prompt = `You are Yomi Image Translator.
-Analyze this comic/manga/webtoon page. Locate every speech bubble and text dialogue.
-Translate all dialogue accurately into ${targetLang}.
-Return JSON only:
+  return { base64Data, mimeType };
+}
+
+function bufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  const CHUNK_SIZE = 8192;
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK_SIZE, len)));
+  }
+  return btoa(binary);
+}
+
+// Master prompt for high-precision comic dialogue detection & visual grounding
+function buildVisionPrompt(targetLang) {
+  return `You are an expert Manga, Manhwa, and Comic Translator.
+Analyze this comic page image. Locate every speech bubble, monologue box, and dialogue text.
+Translate all dialogue naturally and accurately into ${targetLang}.
+Return strictly a valid JSON object in this format without any other text or markdown:
 {
   "bubbles": [
     {
       "box_2d": [ymin, xmin, ymax, xmax],
       "raw_text": "<original foreign text in bubble>",
-      "translated_text": "<natural translation in UPPERCASE>",
-      "background": "white" | "black" | "dark" | "transparent"
+      "translated_text": "<NATURAL TRANSLATION IN UPPERCASE>",
+      "background": "white" | "dark" | "transparent"
     }
   ]
 }
-CRITICAL RULES FOR BOX_2D:
-- Use [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 integer grid directly framing the speech bubble interior.
-- Detect both normal white bubbles and dramatic dark/black speech bubbles.
-- Ensure the bounding box tightly encompasses the original text so the translated text covers it perfectly.`;
+CRITICAL RULES:
+1. box_2d MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale tightly enclosing the speech bubble interior where text will be rendered.
+2. Detect both white speech bubbles and dark/black speech bubbles (set background: "dark" for black/dark bubbles, "white" for light bubbles).
+3. translated_text must be natural comic dialogue formatted in UPPERCASE.
+4. Output valid JSON only, no markdown explanations.`;
+}
+
+// Universal translation router
+async function handleTranslation(data) {
+  const { imageUrl, targetLang = 'en', byok = {} } = data;
+  const provider = byok.activeProvider || detectProvider(byok);
+
+  switch (provider) {
+    case 'openrouter':
+      return await callOpenRouterVision(imageUrl, targetLang, byok);
+    case 'openai':
+      return await callOpenAIVision(imageUrl, targetLang, byok);
+    case 'anthropic':
+      return await callClaudeVision(imageUrl, targetLang, byok);
+    case 'groq':
+      return await callGroqVision(imageUrl, targetLang, byok);
+    case 'deepseek':
+      return await callDeepSeekVision(imageUrl, targetLang, byok);
+    case 'google':
+    default:
+      if (byok.googleApiKey) {
+        return await callGeminiVision(imageUrl, targetLang, byok);
+      }
+      if (byok.openrouterApiKey) {
+        return await callOpenRouterVision(imageUrl, targetLang, byok);
+      }
+      if (byok.openaiApiKey) {
+        return await callOpenAIVision(imageUrl, targetLang, byok);
+      }
+      if (byok.anthropicApiKey) {
+        return await callClaudeVision(imageUrl, targetLang, byok);
+      }
+      if (byok.groqApiKey) {
+        return await callGroqVision(imageUrl, targetLang, byok);
+      }
+      return mockMangaDetection(targetLang);
+  }
+}
+
+function detectProvider(byok) {
+  if (byok.googleApiKey) return 'google';
+  if (byok.openrouterApiKey) return 'openrouter';
+  if (byok.openaiApiKey) return 'openai';
+  if (byok.anthropicApiKey) return 'anthropic';
+  if (byok.groqApiKey) return 'groq';
+  if (byok.deepseekApiKey) return 'deepseek';
+  return 'google';
+}
+
+// -------------------------------------------------------------
+// 1. Google Gemini Multimodal Vision
+// -------------------------------------------------------------
+async function callGeminiVision(imageUrl, targetLang, byok) {
+  const apiKey = (byok.googleApiKey || '').trim();
+  if (!apiKey) throw new Error('Google Gemini API key is missing. Click the popup to get a free key from Google AI Studio.');
+
+  let requestedModel = byok.googleModel || 'gemini-3.8-flash';
+  if (requestedModel === 'gemini-2.5-flash' || requestedModel === 'auto' || !requestedModel) {
+    requestedModel = 'gemini-3.8-flash';
+  }
+
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
 
   async function executeGeminiRequest(modelName, includeThinkingConfig = true) {
     const genConfig = {
       response_mime_type: 'application/json',
     };
 
-    // Google Gemini 3.x and 2.5 Flash models support thinking_budget: 0 to disable thinking delays
     if (includeThinkingConfig && (modelName.includes('2.5') || modelName.includes('3.'))) {
       genConfig.thinking_config = { thinking_budget: 0 };
     }
@@ -146,7 +200,7 @@ CRITICAL RULES FOR BOX_2D:
 
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.error?.message || `Gemini API error ${res.status}`);
+      throw new Error(json.error?.message || `Gemini API error HTTP ${res.status}`);
     }
     return json;
   }
@@ -156,20 +210,18 @@ CRITICAL RULES FOR BOX_2D:
     responseJson = await executeGeminiRequest(requestedModel, true);
   } catch (err) {
     const errMsg = (err.message || String(err)).toLowerCase();
-    console.warn(`[Yomi] Attempt with ${requestedModel} failed: ${err.message}`);
 
-    // Case 1: thinking_config rejected (e.g. 400 Bad Request)
+    // Retry without thinking budget if rejected
     if (errMsg.includes('thinking_config') || errMsg.includes('thinkingbudget') || errMsg.includes('invalid argument')) {
       try {
         responseJson = await executeGeminiRequest(requestedModel, false);
       } catch (retryErr) {
-        // Will continue to fallback logic below
+        // Continue to fallback
       }
     }
 
-    // Case 2: Model unavailable, deprecated, or Google suggested another model
+    // Auto-heal on model deprecation or suggestion
     if (!responseJson) {
-      // Check if error message explicitly suggested a model (e.g. "update your code to use models/gemini-3.8-flash")
       const suggestedMatch = err.message.match(/models\/([a-zA-Z0-9\.\-_]+)/);
       let fallbackModel = suggestedMatch ? suggestedMatch[1] : null;
 
@@ -177,15 +229,13 @@ CRITICAL RULES FOR BOX_2D:
         fallbackModel = await discoverBestFlashModel(apiKey);
       }
 
-      console.log(`[Yomi Auto-Heal] Switching model from ${requestedModel} to ${fallbackModel}`);
+      console.log(`[Auto-Heal] Switching Gemini model from ${requestedModel} to ${fallbackModel}`);
       try {
         responseJson = await executeGeminiRequest(fallbackModel, true);
       } catch (fbErr) {
-        // Retry fallback without thinking config if needed
         responseJson = await executeGeminiRequest(fallbackModel, false);
       }
 
-      // Automatically persist working model to chrome.storage
       chrome.storage.sync.get(['byok'], existing => {
         const byokData = existing.byok || {};
         byokData.googleModel = fallbackModel;
@@ -196,7 +246,268 @@ CRITICAL RULES FOR BOX_2D:
 
   const rawText = responseJson?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) throw new Error('Gemini returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
 
+// -------------------------------------------------------------
+// 2. OpenRouter Vision (Unified 200+ Models)
+// -------------------------------------------------------------
+async function callOpenRouterVision(imageUrl, targetLang, byok) {
+  const apiKey = (byok.openrouterApiKey || '').trim();
+  if (!apiKey) throw new Error('OpenRouter API key is missing. Click the popup to get a key from OpenRouter.');
+  const model = byok.openrouterModel || 'google/gemini-2.0-flash-001';
+
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://manga-manhwa-translator.vercel.app',
+      'X-Title': 'Manga & Manhwa Image Translator',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Data}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message || `OpenRouter API error HTTP ${res.status}`);
+  }
+
+  const rawText = json.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error('OpenRouter returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
+
+// -------------------------------------------------------------
+// 3. OpenAI Vision (GPT-4o & GPT-4o-mini)
+// -------------------------------------------------------------
+async function callOpenAIVision(imageUrl, targetLang, byok) {
+  const apiKey = (byok.openaiApiKey || '').trim();
+  if (!apiKey) throw new Error('OpenAI API key is missing. Click the popup to get a key from OpenAI Platform.');
+  const model = byok.openaiModel || 'gpt-4o-mini';
+
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Data}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message || `OpenAI API error HTTP ${res.status}`);
+  }
+
+  const rawText = json.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error('OpenAI returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
+
+// -------------------------------------------------------------
+// 4. Anthropic Claude Vision (Claude 3.5 Sonnet & Haiku)
+// -------------------------------------------------------------
+async function callClaudeVision(imageUrl, targetLang, byok) {
+  const apiKey = (byok.anthropicApiKey || '').trim();
+  if (!apiKey) throw new Error('Anthropic API key is missing. Click the popup to get a key from Anthropic Console.');
+  const model = byok.anthropicModel || 'claude-3-5-haiku-20241022';
+
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
+
+  let anthropicMime = mimeType;
+  if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(anthropicMime)) {
+    anthropicMime = 'image/jpeg';
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: model,
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: anthropicMime,
+                data: base64Data,
+              },
+            },
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message || `Anthropic API error HTTP ${res.status}`);
+  }
+
+  const rawText = json.content?.[0]?.text;
+  if (!rawText) throw new Error('Anthropic returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
+
+// -------------------------------------------------------------
+// 5. Groq LPU Vision (Llama 3.2 Vision)
+// -------------------------------------------------------------
+async function callGroqVision(imageUrl, targetLang, byok) {
+  const apiKey = (byok.groqApiKey || '').trim();
+  if (!apiKey) throw new Error('Groq API key is missing. Click the popup to get a key from Groq Console.');
+  const model = byok.groqModel || 'llama-3.2-11b-vision-preview';
+
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Data}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message || `Groq API error HTTP ${res.status}`);
+  }
+
+  const rawText = json.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error('Groq returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
+
+// -------------------------------------------------------------
+// 6. DeepSeek Vision
+// -------------------------------------------------------------
+async function callDeepSeekVision(imageUrl, targetLang, byok) {
+  // If DeepSeek direct API is configured
+  const apiKey = (byok.deepseekApiKey || '').trim();
+  if (!apiKey) throw new Error('DeepSeek API key is missing. Click the popup to get a key from DeepSeek Platform.');
+  const model = byok.deepseekModel || 'deepseek-chat';
+
+  // DeepSeek via OpenAI-compatible endpoint
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const prompt = buildVisionPrompt(targetLang);
+
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Data}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.error?.message || `DeepSeek API error HTTP ${res.status}`);
+  }
+
+  const rawText = json.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error('DeepSeek returned an empty response.');
+  return parseAndNormalizeJson(rawText);
+}
+
+// -------------------------------------------------------------
+// Universal Output Normalizer
+// -------------------------------------------------------------
+function parseAndNormalizeJson(rawText) {
   let cleaned = rawText.trim();
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
@@ -204,10 +515,131 @@ CRITICAL RULES FOR BOX_2D:
     cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
   }
 
-  return JSON.parse(cleaned);
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    throw new Error('Failed to parse AI translation JSON. The model returned malformed output.');
+  }
+
+  const rawBubbles = parsed.bubbles || parsed.translations || [];
+
+  const bubbles = rawBubbles.map(b => {
+    let box = b.box_2d;
+    if (!box && (b.y !== undefined || b.ymin !== undefined)) {
+      if (b.ymin !== undefined) {
+        box = [b.ymin, b.xmin, b.ymax, b.xmax];
+      } else if (b.height !== undefined && b.width !== undefined) {
+        box = [b.y, b.x, b.y + b.height, b.x + b.width];
+      }
+    }
+    return {
+      box_2d: box,
+      raw_text: b.raw_text || b.original_text || '',
+      translated_text: b.translated_text || b.translation || '',
+      background: b.background || (b.is_dark_bubble ? 'dark' : 'white'),
+    };
+  });
+
+  return { bubbles };
 }
 
-// Dynamically discover supported Flash models from Gemini ModelService
+// -------------------------------------------------------------
+// Live API Key Validator
+// -------------------------------------------------------------
+async function testApiKey({ provider, apiKey, model }) {
+  const key = (apiKey || '').trim();
+  if (!key) throw new Error('API key cannot be empty. Please enter a valid key.');
+
+  if (provider === 'google') {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error?.message || `Google API error (HTTP ${res.status})`);
+    }
+    return { success: true, message: `Connected! Google Gemini active (${json.models?.length || 0} models available)` };
+  }
+
+  if (provider === 'openrouter') {
+    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error?.message || `OpenRouter error (HTTP ${res.status})`);
+    }
+    const label = json.data?.label || 'OpenRouter';
+    const limit = json.data?.limit !== null && json.data?.limit !== undefined ? `$${json.data?.limit}` : 'Pay-as-you-go';
+    return { success: true, message: `Connected to OpenRouter (${label})! Limit: ${limit}` };
+  }
+
+  if (provider === 'openai') {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error?.message || `OpenAI error (HTTP ${res.status})`);
+    }
+    return { success: true, message: `Connected! OpenAI active (${json.data?.length || 0} models available)` };
+  }
+
+  if (provider === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: model || 'claude-3-5-haiku-20241022',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'Ping' }],
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok && res.status !== 200) {
+      throw new Error(json.error?.message || `Anthropic error (HTTP ${res.status})`);
+    }
+    return { success: true, message: 'Connected! Anthropic Claude verified successfully.' };
+  }
+
+  if (provider === 'groq') {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error?.message || `Groq error (HTTP ${res.status})`);
+    }
+    return { success: true, message: `Connected! Groq LPU engine verified (${json.data?.length || 0} models)` };
+  }
+
+  if (provider === 'deepseek') {
+    const res = await fetch('https://api.deepseek.com/models', {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error?.message || `DeepSeek error (HTTP ${res.status})`);
+    }
+    return { success: true, message: 'Connected to DeepSeek successfully!' };
+  }
+
+  throw new Error(`Unsupported provider: ${provider}`);
+}
+
+// -------------------------------------------------------------
+// Dynamic Discovery & Fallback
+// -------------------------------------------------------------
 async function discoverBestFlashModel(apiKey) {
   const now = Date.now();
   if (cachedValidModels && now - lastModelCheckTime < 300000) {
@@ -222,10 +654,7 @@ async function discoverBestFlashModel(apiKey) {
         .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
         .map(m => m.name.replace('models/', ''));
 
-      // Filter out deprecated models
       const activeModels = models.filter(m => !m.includes('2.5-flash'));
-
-      // Prefer 3.8-flash, 3.5-flash, 3.1-flash, 2.0-flash
       const flashModels = activeModels.filter(m => m.includes('flash'));
       if (flashModels.length > 0) {
         flashModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
@@ -233,82 +662,28 @@ async function discoverBestFlashModel(apiKey) {
         lastModelCheckTime = now;
         return flashModels[0];
       }
-      if (activeModels.length > 0) {
-        activeModels.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
-        cachedValidModels = activeModels;
-        lastModelCheckTime = now;
-        return activeModels[0];
-      }
     }
   } catch (err) {
-    console.warn('[Yomi] Failed to query dynamic model list:', err);
+    console.warn('[Translator] Failed to query dynamic models:', err);
   }
 
   return 'gemini-3.8-flash';
-}
-
-async function callOpenAIVision(imageUrl, targetLang, byok) {
-  const apiKey = byok.openaiApiKey.trim();
-  const model = byok.openaiModel || 'gpt-4o-mini';
-
-  const prompt = `Detect speech bubbles in this manga and translate to: ${targetLang}.
-Return JSON:
-{
-  "bubbles": [
-    {
-      "x": number, "y": number, "width": number, "height": number,
-      "raw_text": "original", "translated_text": "translation"
-    }
-  ]
-}`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: model,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: prompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Translate image bubbles' },
-            { type: 'image_url', image_url: { url: imageUrl } },
-          ],
-        },
-      ],
-      temperature: 0.2,
-    }),
-  });
-
-  const json = await response.json();
-  const text = json.choices?.[0]?.message?.content;
-  if (!text) throw new Error('Empty OpenAI response');
-  return JSON.parse(text);
 }
 
 function mockMangaDetection(targetLang) {
   return {
     bubbles: [
       {
-        x: 240,
-        y: 180,
-        width: 190,
-        height: 120,
+        box_2d: [180, 240, 300, 430],
         raw_text: '待たせたな！準備はいいか？',
         translated_text: 'SORRY TO KEEP YOU WAITING! ARE YOU READY?!',
+        background: 'white',
       },
       {
-        x: 640,
-        y: 450,
-        width: 210,
-        height: 130,
+        box_2d: [450, 640, 580, 850],
         raw_text: 'いつでも来い！容赦はしないぞ！',
         translated_text: "COME AT ME! I WON'T HOLD BACK!",
+        background: 'dark',
       },
     ],
   };

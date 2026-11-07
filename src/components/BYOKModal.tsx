@@ -129,7 +129,18 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
             {localConfig.activeProvider === 'google' && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-neutral-400 block mb-1">Google Gemini API Key</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">Google Gemini API Key</label>
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>Get Free API Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   <div className="relative">
                     <input
                       type={showKey.google ? 'text' : 'password'}
@@ -137,7 +148,7 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                       onChange={e =>
                         setLocalConfig(prev => ({ ...prev, googleApiKey: e.target.value }))
                       }
-                      placeholder="AIzaSy..."
+                      placeholder="AIzaSy... (Free 15 RPM)"
                       className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:border-orange-500 pr-10"
                     />
                     <button
@@ -170,11 +181,78 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
               </div>
             )}
 
+            {/* OpenRouter */}
+            {localConfig.activeProvider === 'openrouter' && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">OpenRouter API Key</label>
+                    <a
+                      href="https://openrouter.ai/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>Get OpenRouter Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showKey.openrouter ? 'text' : 'password'}
+                      value={localConfig.openrouterApiKey}
+                      onChange={e =>
+                        setLocalConfig(prev => ({ ...prev, openrouterApiKey: e.target.value }))
+                      }
+                      placeholder="sk-or-v1-..."
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:border-orange-500 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleShowKey('openrouter')}
+                      className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-300"
+                    >
+                      {showKey.openrouter ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1">Model Version</label>
+                  <select
+                    value={localConfig.openrouterModel || 'google/gemini-2.0-flash-001'}
+                    onChange={e =>
+                      setLocalConfig(prev => ({ ...prev, openrouterModel: e.target.value }))
+                    }
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash (Fast & Cheap)</option>
+                    <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini</option>
+                    <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku (Crisp Manga OCR)</option>
+                    <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+                    <option value="meta-llama/llama-3.2-11b-vision-instruct">Llama 3.2 11B Vision</option>
+                    <option value="openai/gpt-4o">OpenAI GPT-4o Flagship</option>
+                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet Flagship</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* OpenAI */}
             {localConfig.activeProvider === 'openai' && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-neutral-400 block mb-1">OpenAI API Key</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">OpenAI API Key</label>
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>Get OpenAI Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   <div className="relative">
                     <input
                       type={showKey.openai ? 'text' : 'password'}
@@ -203,8 +281,8 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
+                    <option value="gpt-4o-mini">GPT-4o Mini (Fast & Budget)</option>
                     <option value="gpt-4o">GPT-4o (High-Res Multimodal)</option>
-                    <option value="gpt-4o-mini">GPT-4o Mini (Fast)</option>
                   </select>
                 </div>
               </div>
@@ -214,7 +292,18 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
             {localConfig.activeProvider === 'anthropic' && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-neutral-400 block mb-1">Anthropic API Key</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">Anthropic API Key</label>
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>Get Anthropic Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   <div className="relative">
                     <input
                       type={showKey.anthropic ? 'text' : 'password'}
@@ -243,8 +332,58 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Ultra Fast)</option>
                     <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* DeepSeek */}
+            {localConfig.activeProvider === 'deepseek' && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">DeepSeek API Key</label>
+                    <a
+                      href="https://platform.deepseek.com/api_keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1 hover:underline"
+                    >
+                      <span>Get DeepSeek Key</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showKey.deepseek ? 'text' : 'password'}
+                      value={localConfig.deepseekApiKey}
+                      onChange={e =>
+                        setLocalConfig(prev => ({ ...prev, deepseekApiKey: e.target.value }))
+                      }
+                      placeholder="sk-..."
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-100 font-mono focus:outline-none focus:border-orange-500 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleShowKey('deepseek')}
+                      className="absolute right-3 top-2.5 text-neutral-500 hover:text-neutral-300"
+                    >
+                      {showKey.deepseek ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1">Model Version</label>
+                  <select
+                    value={localConfig.deepseekModel || 'deepseek-chat'}
+                    onChange={e =>
+                      setLocalConfig(prev => ({ ...prev, deepseekModel: e.target.value }))
+                    }
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="deepseek-chat">DeepSeek-V3 Standard</option>
                   </select>
                 </div>
               </div>
