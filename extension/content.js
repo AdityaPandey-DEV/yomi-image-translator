@@ -2,6 +2,56 @@
 // Features: Queue-based rate limiting, zero-flicker DOM isolation, anti-infinite-loop guards.
 
 (() => {
+  // ============================================================
+  // Companion Website Bridge (manga-manhwa-translator.vercel.app)
+  // ============================================================
+  if (window.location.origin === 'https://manga-manhwa-translator.vercel.app') {
+    // 1. Listen for window messages from the web app
+    window.addEventListener('message', event => {
+      if (event.source !== window || event.origin !== 'https://manga-manhwa-translator.vercel.app') return;
+
+      if (event.data && event.data.type === 'MMT_AUTH_SYNC') {
+        const payload = event.data.payload || event.data;
+        if (payload.token) {
+          chrome.runtime.sendMessage(
+            {
+              action: 'AUTH_TOKEN',
+              token: payload.token,
+              email: payload.email || '',
+              displayName: payload.displayName || '',
+              photoURL: payload.photoURL || '',
+              mode: payload.mode || 'private',
+            },
+            res => {
+              if (res?.success) {
+                window.postMessage({ type: 'MMT_AUTH_SYNCED', success: true }, 'https://manga-manhwa-translator.vercel.app');
+              }
+            }
+          );
+        }
+      }
+
+      if (event.data && event.data.type === 'MMT_CHECK_EXTENSION') {
+        window.postMessage({ type: 'MMT_EXTENSION_PONG', version: '1.1.0' }, 'https://manga-manhwa-translator.vercel.app');
+      }
+    });
+
+    // 2. Listen for messages from background/popup requesting auth from webpage
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'REQUEST_AUTH_FROM_PAGE') {
+        window.postMessage({ type: 'MMT_REQUEST_AUTH' }, 'https://manga-manhwa-translator.vercel.app');
+        sendResponse({ initiated: true });
+        return true;
+      }
+    });
+
+    // 3. Signal to webpage that extension content script is active
+    window.postMessage({ type: 'MMT_EXTENSION_READY', version: '1.1.0' }, 'https://manga-manhwa-translator.vercel.app');
+
+    // On our companion website, skip manga image scanner
+    return;
+  }
+
   // Constants & State
   const WRAPPER_CLASS = 'yomi-manga-wrapper';
   const PROCESSED_ATTR = 'data-yomi-processed';

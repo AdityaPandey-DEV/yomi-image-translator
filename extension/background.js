@@ -42,6 +42,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     return true;
   }
+
+  if (request.action === 'AUTH_TOKEN' && request.token) {
+    const isAllowed =
+      !sender.tab ||
+      (sender.tab.url && sender.tab.url.startsWith('https://manga-manhwa-translator.vercel.app'));
+
+    if (!isAllowed) {
+      sendResponse({ success: false, error: 'Unauthorized origin' });
+      return true;
+    }
+
+    chrome.storage.local.set(
+      {
+        firebaseToken: request.token,
+        userEmail: request.email || '',
+        userName: request.displayName || '',
+        userPhoto: request.photoURL || '',
+        userMode: request.mode || 'private',
+        authTimestamp: Date.now(),
+      },
+      () => {
+        console.log('[Translator Background] Synced auth token to local storage!');
+        sendResponse({ success: true, message: 'Extension authenticated!' });
+      }
+    );
+    return true;
+  }
+
+  if (request.action === 'CHECK_EXTENSION_INSTALLED') {
+    sendResponse({ success: true, version: '1.1.0' });
+    return true;
+  }
 });
 
 // Listen for external auth token relay from our companion website

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key, Shield, Users, Globe, LogOut, ExternalLink, Eye, EyeOff,
   Plus, Trash2, CheckCircle2, AlertCircle, Loader2, RefreshCw,
@@ -188,6 +188,58 @@ export function Dashboard() {
     }
   };
 
+  // Auto-sync token to Chrome extension whenever user logs in or page loads
+  useEffect(() => {
+    if (!user) return;
+
+    const doSync = async () => {
+      try {
+        const token = await getIdToken();
+        if (token) {
+          await sendTokenToExtension(
+            token,
+            user.email || '',
+            profile?.displayName || user.displayName || '',
+            user.photoURL || '',
+            profile?.mode || 'private'
+          );
+        }
+      } catch (err) {
+        console.warn('[Extension Auto-Sync]', err);
+      }
+    };
+
+    doSync();
+
+    const handleWindowMsg = async (event: MessageEvent) => {
+      if (event.source !== window) return;
+
+      if (event.data?.type === 'MMT_EXTENSION_READY' || event.data?.type === 'MMT_REQUEST_AUTH') {
+        setExtensionStatus('connected');
+        const token = await getIdToken();
+        if (token) {
+          sendTokenToExtension(
+            token,
+            user.email || '',
+            profile?.displayName || user.displayName || '',
+            user.photoURL || '',
+            profile?.mode || 'private'
+          );
+        }
+      }
+
+      if (event.data?.type === 'MMT_AUTH_SYNCED' || event.data?.type === 'MMT_EXTENSION_PONG') {
+        setExtensionStatus('connected');
+      }
+    };
+
+    window.addEventListener('message', handleWindowMsg);
+    // Ping content script to test extension presence
+    window.postMessage({ type: 'MMT_CHECK_EXTENSION' }, window.location.origin);
+
+    return () => window.removeEventListener('message', handleWindowMsg);
+  }, [user, profile?.mode, profile?.displayName]);
+
   const handleSyncExtension = async () => {
     setExtensionStatus('syncing');
     try {
@@ -196,7 +248,13 @@ export function Dashboard() {
         setExtensionStatus('failed');
         return;
       }
-      const success = await sendTokenToExtension(token, user?.email || '');
+      const success = await sendTokenToExtension(
+        token,
+        user?.email || '',
+        profile?.displayName || user?.displayName || '',
+        user?.photoURL || '',
+        profile?.mode || 'private'
+      );
       setExtensionStatus(success ? 'connected' : 'failed');
     } catch {
       setExtensionStatus('failed');
@@ -501,61 +559,67 @@ export function Dashboard() {
 
         {/* ===== Section 4: Extension Connection ===== */}
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
-          <div className="mb-1 flex items-center gap-2">
-            <Globe className="h-5 w-5 text-orange-500" />
-            <h2 className="text-lg font-bold text-white">Chrome Extension</h2>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-orange-500" />
+              <h2 className="text-lg font-bold text-white">Chrome Extension Companion</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {extensionStatus === 'connected' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Synced & Active
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 border border-neutral-700 px-3 py-1 text-xs font-medium text-neutral-400">
+                  <span className="h-2 w-2 rounded-full bg-neutral-500" />
+                  Ready to Link
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="mb-4 flex items-center gap-2">
-            {extensionStatus === 'connected' ? (
-              <>
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                <span className="text-sm font-medium text-emerald-400">Connected</span>
-              </>
-            ) : extensionStatus === 'failed' ? (
-              <>
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                <span className="text-sm font-medium text-red-400">Not Connected</span>
-              </>
-            ) : (
-              <>
-                <span className="h-2.5 w-2.5 rounded-full bg-neutral-600" />
-                <span className="text-sm font-medium text-neutral-400">Not Connected</span>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={handleSyncExtension}
-            disabled={extensionStatus === 'syncing'}
-            className="mb-4 flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
-          >
-            {extensionStatus === 'syncing' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Syncing…
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                Sync Login to Extension
-              </>
-            )}
-          </button>
-
-          <p className="mb-3 text-sm leading-relaxed text-neutral-400">
-            Install the extension from the Chrome Web Store to translate manga directly on any website.
+          <p className="text-sm leading-relaxed text-neutral-400 mb-4">
+            Zero plain-text API keys are stored in the extension. Your session token is automatically relayed from this portal to securely authenticate the extension background worker.
           </p>
 
-          <a
-            href="https://chromewebstore.google.com/detail/manga-translator/pjlblckbipgkomdiojhkmaeffbhkebld"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-orange-400 transition-colors hover:text-orange-300"
-          >
-            Chrome Web Store
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleSyncExtension}
+              disabled={extensionStatus === 'syncing'}
+              className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange-600 disabled:opacity-50 shadow-lg shadow-orange-500/20"
+            >
+              {extensionStatus === 'syncing' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Syncing…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Re-Sync to Extension
+                </>
+              )}
+            </button>
+
+            <a
+              href="/manga-manhwa-translator.zip"
+              download="manga-manhwa-translator.zip"
+              className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-sm font-semibold text-neutral-200 transition-colors hover:bg-neutral-700 hover:text-white"
+            >
+              <span>Download Extension v1.1.0 (.zip)</span>
+            </a>
+
+            <a
+              href="https://chromewebstore.google.com/detail/manga-translator/pjlblckbipgkomdiojhkmaeffbhkebld"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-neutral-400 transition-colors hover:text-orange-400"
+            >
+              <span>Web Store</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
         </div>
       </div>
     </div>

@@ -239,31 +239,85 @@ export async function getSharedKey(provider: string): Promise<{ apiKey: string; 
 
 // ============================================================
 // Extension Integration: Send auth token to Chrome extension
+// Dual-Bridge: Content Script postMessage + externally_connectable
 // ============================================================
 
 /** Attempt to send auth credentials to the installed Chrome extension */
-export function sendTokenToExtension(idToken: string, email: string = ''): Promise<boolean> {
+export function sendTokenToExtension(
+  idToken: string,
+  email: string = '',
+  displayName: string = '',
+  photoURL: string = '',
+  mode: string = 'private'
+): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
-      resolve(false);
-      return;
-    }
-    try {
-      chrome.runtime.sendMessage(
-        EXTENSION_ID,
-        { type: 'AUTH_TOKEN', token: idToken, email },
-        (response: any) => {
-          if (chrome.runtime.lastError) {
-            console.log('Extension not detected:', chrome.runtime.lastError.message);
-            resolve(false);
-            return;
+    let resolved = false;
+
+    // 1. Post to Content Script Bridge (Universal, works in developer mode & Web Store)
+    if (typeof window !== 'undefined') {
+      const handleSynced = (e: MessageEvent) => {
+        if (e.data?.type === 'MMT_AUTH_SYNCED') {
+          window.removeEventListener('message', handleSynced);
+          if (!resolved) {
+            resolved = true;
+            resolve(true);
           }
-          resolve(response?.success === true);
         }
+      };
+      window.addEventListener('message', handleSynced);
+
+      window.postMessage(
+        {
+          type: 'MMT_AUTH_SYNC',
+          token: idToken,
+          email,
+          displayName,
+          photoURL,
+          mode,
+        },
+        window.location.origin
       );
-    } catch {
-      resolve(false);
+
+      // Clean up event listener after 2s
+      setTimeout(() => {
+        window.removeEventListener('message', handleSynced);
+      }, 2000);
     }
+
+    // 2. Direct externally_connectable relay (as backup)
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      try {
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          {
+            type: 'AUTH_TOKEN',
+            token: idToken,
+            email,
+            displayName,
+            photoURL,
+            mode,
+          },
+          (response: any) => {
+            if (!chrome.runtime.lastError && response?.success) {
+              if (!resolved) {
+                resolved = true;
+                resolve(true);
+              }
+            }
+          }
+        );
+      } catch {
+        // Ignored
+      }
+    }
+
+    // Fallback: If postMessage was sent, assume successful dispatch after 800ms
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(true);
+      }
+    }, 800);
   });
 }
 

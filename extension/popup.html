@@ -7,307 +7,672 @@
     :root {
       --bg: #09090b;
       --card: #121215;
+      --card-hover: #18181c;
       --input-bg: #18181b;
       --border: #27272a;
+      --border-accent: rgba(249, 115, 22, 0.3);
       --primary: #f97316;
       --primary-hover: #ea580c;
+      --primary-glow: rgba(249, 115, 22, 0.25);
       --success: #22c55e;
+      --success-glow: rgba(34, 197, 94, 0.2);
       --text: #fafafa;
       --muted: #a1a1aa;
+      --dim: #71717a;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      width: 340px;
+      width: 360px;
       padding: 16px;
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
       font-size: 13px;
       user-select: none;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      position: relative;
     }
 
+    /* Ambient background glow */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      height: 120px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249, 115, 22, 0.12) 0%, rgba(168, 85, 247, 0.04) 50%, transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
     .header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+      justify-content: space-between;
+      margin-bottom: 14px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
     .logo {
-      width: 34px; height: 34px;
+      width: 32px;
+      height: 32px;
       background: linear-gradient(135deg, #f97316, #ea580c);
       border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px var(--primary-glow);
       flex-shrink: 0;
     }
-    .logo svg { width: 20px; height: 20px; fill: #fff; }
-    .title { font-weight: 700; font-size: 13.5px; color: #fff; }
-    .sub { font-size: 11px; color: var(--muted); }
+    .logo svg { width: 18px; height: 18px; fill: #fff; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .version-pill {
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #fb923c;
+      background: rgba(249, 115, 22, 0.12);
+      border: 1px solid rgba(249, 115, 22, 0.25);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
 
-    /* Auth States */
+    .status-badge-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      color: #4ade80;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Views */
     #signed-out-view, #signed-in-view { display: none; }
 
-    /* Signed Out View */
-    .auth-card {
+    /* Bento Card */
+    .bento-card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: border-color 0.15s ease;
     }
-    .auth-card .shield { font-size: 32px; margin-bottom: 8px; }
-    .auth-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-    .auth-card p { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-bottom: 16px; }
-    .btn-signin {
+    .bento-card:hover {
+      border-color: #3f3f46;
+    }
+
+    /* Signed Out View */
+    .hero-icon {
+      width: 48px;
+      height: 48px;
+      margin: 4px auto 12px;
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.05));
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 16px var(--primary-glow);
+    }
+    .hero-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .hero-desc {
+      font-size: 11.5px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+      margin-bottom: 14px;
+    }
+
+    /* Feature pills in Bento layout */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .feature-pill {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 10.5px;
+      color: #d4d4d8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #fff;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px var(--primary-glow);
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .sync-status-hint {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      width: 100%;
-      background: linear-gradient(135deg, #f97316, #ea580c);
-      color: #fff;
-      font-weight: 700;
-      font-size: 12.5px;
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
-      transition: all 0.15s ease;
-      text-decoration: none;
-    }
-    .btn-signin:hover { transform: translateY(-0.5px); }
-    .btn-signin svg { width: 14px; height: 14px; fill: currentColor; }
-    .auth-hint {
-      font-size: 10.5px;
-      color: #71717a;
+      font-size: 11px;
+      color: var(--dim);
       margin-top: 10px;
-      line-height: 1.4;
+      text-align: center;
     }
+    .spinner-sm {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #3f3f46;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Signed In View */
     .user-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
       margin-bottom: 12px;
     }
     .user-avatar {
-      width: 36px; height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: #27272a;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 14px; color: var(--primary);
-      overflow: hidden; flex-shrink: 0;
-    }
-    .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .user-info { flex: 1; min-width: 0; }
-    .user-name { font-weight: 600; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-email { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mode-badge {
-      font-size: 9.5px; font-weight: 600;
-      padding: 2px 7px; border-radius: 10px;
-      white-space: nowrap;
-    }
-    .mode-private { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
-    .mode-shared { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
-
-    .status-connected {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px 14px;
-      background: rgba(34,197,94,0.08);
-      border: 1px solid rgba(34,197,94,0.2);
-      border-radius: 10px;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--primary);
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid #3f3f46;
+    }
+    .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .user-details { flex: 1; min-width: 0; }
+    .user-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-email {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+
+    .mode-pill {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 12px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mode-private {
+      background: rgba(249, 115, 22, 0.12);
+      color: #fb923c;
+      border: 1px solid rgba(249, 115, 22, 0.25);
+    }
+    .mode-shared {
+      background: rgba(34, 197, 94, 0.12);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    /* Live Engine Bento Row */
+    .bento-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
       margin-bottom: 12px;
     }
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 6px rgba(34,197,94,0.5);
+    .bento-metric {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
     }
-    .status-text { font-size: 11.5px; color: #4ade80; font-weight: 600; }
+    .bento-metric-label {
+      font-size: 10.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+    }
+    .bento-metric-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
-    /* Settings */
-    .field-group { margin-bottom: 12px; }
-    .field-label {
+    /* Settings Bento Box */
+    .settings-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .field-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11.5px;
+      margin-bottom: 12px;
+    }
+    .field-row:last-child { margin-bottom: 0; }
+    .field-title {
+      font-size: 12px;
       font-weight: 600;
-      color: #d4d4d8;
-      margin-bottom: 6px;
+      color: #e4e4e7;
+    }
+    .field-desc {
+      font-size: 10.5px;
+      color: var(--dim);
+      margin-top: 1px;
+    }
+
+    /* Custom Select */
+    .select-wrapper {
+      position: relative;
+      width: 100%;
+      margin-top: 6px;
     }
     select {
       width: 100%;
       background: var(--input-bg);
       border: 1px solid var(--border);
       color: #f4f4f5;
-      padding: 8px 10px;
-      border-radius: 8px;
+      padding: 8px 12px;
+      border-radius: 9px;
       font-size: 12px;
+      font-weight: 500;
       outline: none;
       cursor: pointer;
+      appearance: none;
+      transition: border-color 0.15s ease;
     }
-    select:focus { border-color: var(--primary); }
+    select:focus {
+      border-color: var(--primary);
+    }
+    .select-chevron {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--muted);
+      width: 12px;
+      height: 12px;
+    }
 
-    .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+    /* iOS-Style Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+    }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute; cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--border); border-radius: 20px;
-      transition: .2s;
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #27272a;
+      border-radius: 22px;
+      transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .slider:before {
-      position: absolute; content: "";
-      height: 14px; width: 14px; left: 3px; bottom: 3px;
-      background: white; border-radius: 50%;
-      transition: .2s;
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
-    input:checked + .slider { background: var(--primary); }
-    input:checked + .slider:before { transform: translateX(16px); }
+    input:checked + .slider {
+      background: var(--primary);
+    }
+    input:checked + .slider::before {
+      transform: translateX(16px);
+    }
 
-    .btn-manage {
-      display: flex; align-items: center; justify-content: center;
-      gap: 6px; width: 100%;
-      background: var(--input-bg); border: 1px solid var(--border);
-      color: #d4d4d8; font-weight: 600; font-size: 12px;
-      padding: 9px; border-radius: 8px; cursor: pointer;
+    /* Secondary Buttons */
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      background: #18181b;
+      border: 1px solid var(--border);
+      color: #e4e4e7;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      cursor: pointer;
       text-decoration: none;
       transition: all 0.15s ease;
     }
-    .btn-manage:hover { background: #27272a; color: #fff; }
+    .btn-secondary:hover {
+      background: #27272a;
+      border-color: #3f3f46;
+      color: #fff;
+    }
+
     .btn-signout {
-      display: block; width: 100%;
-      background: none; border: none;
-      color: #71717a; font-size: 11px;
-      cursor: pointer; margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--dim);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 10px;
+      padding: 6px;
       transition: color 0.15s;
     }
-    .btn-signout:hover { color: #ef4444; }
-
-    .links-row {
-      display: flex; justify-content: center;
-      gap: 12px; margin-top: 12px; font-size: 11px;
+    .btn-signout:hover {
+      color: #ef4444;
     }
-    .links-row a { color: var(--muted); text-decoration: none; }
-    .links-row a:hover { color: var(--primary); text-decoration: underline; }
-    .footer { font-size: 10px; color: #71717a; text-align: center; margin-top: 10px; }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--dim);
+    }
+    .footer a {
+      color: var(--dim);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .footer a:hover {
+      color: var(--text);
+    }
+    .footer-hint {
+      text-align: center;
+      font-size: 10.5px;
+      color: #52525b;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <div class="header">
-    <div class="logo">
-      <svg viewBox="0 0 24 24">
-        <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
-      </svg>
-    </div>
-    <div>
-      <div class="title">Manga & Manhwa Translator</div>
-      <div class="sub">Cloud AI Translation v1.1</div>
-    </div>
-  </div>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24">
+            <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="title-row">
+            <span class="title">Manga Translator</span>
+            <span class="version-pill">v1.1</span>
+          </div>
+          <div class="sub">Multimodal Cloud AI</div>
+        </div>
+      </div>
+      <div class="status-badge-header">
+        <span class="status-dot"></span>
+        <span>Active</span>
+      </div>
+    </header>
 
-  <!-- SIGNED OUT VIEW -->
-  <div id="signed-out-view">
-    <div class="auth-card">
-      <div class="shield">🔐</div>
-      <h3>Secure Cloud Login</h3>
-      <p>
-        Sign in through our website to securely sync your API keys.
-        No keys stored in the extension — everything stays in your encrypted cloud vault.
-      </p>
-      <a id="signin-btn" href="https://manga-manhwa-translator.vercel.app/" target="_blank" class="btn-signin">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+    <!-- ======================================================== -->
+    <!-- SIGNED OUT VIEW                                          -->
+    <!-- ======================================================== -->
+    <div id="signed-out-view">
+      <div class="bento-card" style="text-align: center;">
+        <div class="hero-icon">🔐</div>
+        <h3 class="hero-title">Zero-Knowledge Cloud Login</h3>
+        <p class="hero-desc">
+          Sign in via our web portal to link your account. API keys are safely isolated in your personal cloud vault and never stored in plain-text on your device.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-pill">
+            <span>🛡️</span> <span>Encrypted BYOK</span>
+          </div>
+          <div class="feature-pill">
+            <span>⚡</span> <span>Multi-Model AI</span>
+          </div>
+          <div class="feature-pill">
+            <span>🌐</span> <span>Community Pool</span>
+          </div>
+          <div class="feature-pill">
+            <span>💬</span> <span>In-Place Bubbles</span>
+          </div>
+        </div>
+
+        <button id="signin-action-btn" class="btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+          Connect via manga-manhwa-translator
+        </button>
+
+        <div id="sync-detection-status" class="sync-status-hint">
+          <div class="spinner-sm"></div>
+          <span>Checking for active website session…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- SIGNED IN VIEW                                           -->
+    <!-- ======================================================== -->
+    <div id="signed-in-view">
+      <!-- Profile Bento Card -->
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar-container">
+          <span id="user-initials">U</span>
+        </div>
+        <div class="user-details">
+          <div class="user-name" id="user-name">User</div>
+          <div class="user-email" id="user-email">user@email.com</div>
+        </div>
+        <span id="mode-badge" class="mode-pill mode-private">Private</span>
+      </div>
+
+      <!-- Bento Row: Vault Status & Engine -->
+      <div class="bento-row">
+        <div class="bento-metric">
+          <div class="bento-metric-label">Vault Status</div>
+          <div class="bento-metric-value" style="color:#4ade80;">
+            <span class="status-dot"></span>
+            <span>Connected</span>
+          </div>
+        </div>
+        <div class="bento-metric">
+          <div class="bento-metric-label">AI Engine</div>
+          <div class="bento-metric-value" style="color:#fb923c;">
+            <span>⚡ Multi-Provider</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Bento Box -->
+      <div class="settings-card">
+        <!-- Auto Translate Toggle -->
+        <div class="field-row">
+          <div>
+            <div class="field-title">Auto-Translate on Scroll</div>
+            <div class="field-desc">Instantly translate manga panels as you read</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="auto-translate-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Target Language Selector -->
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <div class="field-title">Target Language</div>
+          <div class="select-wrapper">
+            <select id="target-lang">
+              <option value="en" selected>🇺🇸 English</option>
+              <option value="es">🇪🇸 Spanish (Español)</option>
+              <option value="fr">🇫🇷 French (Français)</option>
+              <option value="de">🇩🇪 German (Deutsch)</option>
+              <option value="pt">🇧🇷 Portuguese (Português)</option>
+              <option value="it">🇮🇹 Italian (Italiano)</option>
+              <option value="ru">🇷🇺 Russian (Русский)</option>
+              <option value="zh">🇨🇳 Chinese (中文)</option>
+              <option value="ja">🇯🇵 Japanese (日本語)</option>
+              <option value="ko">🇰🇷 Korean (한국어)</option>
+              <option value="id">🇮🇩 Indonesian (Bahasa)</option>
+              <option value="vi">🇻🇳 Vietnamese (Tiếng Việt)</option>
+              <option value="th">🇹🇭 Thai (ไทย)</option>
+              <option value="hi">🇮🇳 Hindi (हिन्दी)</option>
+              <option value="ar">🇸🇦 Arabic (العربية)</option>
+            </select>
+            <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Open Cloud Dashboard Button -->
+      <button id="open-dashboard-btn" class="btn-secondary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
         </svg>
-        Sign In at manga-manhwa-translator.vercel.app
-      </a>
-      <p class="auth-hint">
-        After signing in on the website, your session will automatically sync to this extension.
-      </p>
+        <span>Manage Cloud Vault & API Keys</span>
+      </button>
+
+      <!-- Sign Out -->
+      <button id="signout-btn" class="btn-signout">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Sign Out Extension</span>
+      </button>
     </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="https://manga-manhwa-translator.vercel.app/" target="_blank">Portal</a>
+      <span>•</span>
+      <a href="https://github.com/Image-Translator" target="_blank">GitHub</a>
+      <span>•</span>
+      <a href="https://manga-manhwa-translator.vercel.app/" target="_blank">Docs</a>
+    </div>
+    <div class="footer-hint">Hover any manga or manhwa image & click Translate</div>
   </div>
-
-  <!-- SIGNED IN VIEW -->
-  <div id="signed-in-view">
-    <!-- User Info -->
-    <div class="user-card">
-      <div class="user-avatar" id="user-avatar-container">
-        <span id="user-initials">U</span>
-      </div>
-      <div class="user-info">
-        <div class="user-name" id="user-name">User</div>
-        <div class="user-email" id="user-email">user@email.com</div>
-      </div>
-      <span id="mode-badge" class="mode-badge mode-private">Private</span>
-    </div>
-
-    <!-- Connected Status -->
-    <div class="status-connected">
-      <div class="status-dot"></div>
-      <span class="status-text">Authenticated • Cloud Vault Active</span>
-    </div>
-
-    <!-- Auto Translate Toggle -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-      <span class="field-label" style="margin:0;">Auto-Translate on Scroll</span>
-      <label class="switch">
-        <input type="checkbox" id="auto-translate-toggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <!-- Target Language -->
-    <div class="field-group">
-      <div class="field-label">Target Language</div>
-      <select id="target-lang">
-        <option value="en" selected>English</option>
-        <option value="es">Spanish (Español)</option>
-        <option value="fr">French (Français)</option>
-        <option value="de">German (Deutsch)</option>
-        <option value="pt">Portuguese (Português)</option>
-        <option value="it">Italian (Italiano)</option>
-        <option value="ru">Russian (Русский)</option>
-        <option value="zh">Chinese (中文)</option>
-        <option value="ja">Japanese (日本語)</option>
-        <option value="ko">Korean (한국어)</option>
-        <option value="id">Indonesian (Bahasa)</option>
-        <option value="vi">Vietnamese (Tiếng Việt)</option>
-        <option value="th">Thai (ไทย)</option>
-        <option value="hi">Hindi (हिन्दी)</option>
-      </select>
-    </div>
-
-    <!-- Manage Keys -->
-    <a href="https://manga-manhwa-translator.vercel.app/" target="_blank" class="btn-manage">
-      🔑 Manage API Keys & Settings
-    </a>
-
-    <!-- Sign Out -->
-    <button id="signout-btn" class="btn-signout">Sign Out</button>
-  </div>
-
-  <!-- Footer -->
-  <div class="links-row">
-    <a href="https://manga-manhwa-translator.vercel.app/updates" target="_blank">What's New</a>
-    <span>•</span>
-    <a href="https://manga-manhwa-translator.vercel.app/feedback" target="_blank">Feedback</a>
-    <span>•</span>
-    <a href="https://manga-manhwa-translator.vercel.app/privacy" target="_blank">Privacy</a>
-  </div>
-  <div class="footer">Hover any manga/webtoon image & click Translate.</div>
 
   <script src="popup.js"></script>
 </body>
