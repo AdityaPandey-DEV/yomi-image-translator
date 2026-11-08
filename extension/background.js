@@ -203,25 +203,36 @@ function bufferToBase64(buffer) {
 
 // Master prompt for high-precision comic dialogue detection & visual grounding
 function buildVisionPrompt(targetLang) {
-  return `You are an expert Manga, Manhwa, and Comic Translator.
-Analyze this comic page image. Locate every speech bubble, monologue box, and dialogue text.
-Translate all dialogue naturally and accurately into ${targetLang}.
-Return strictly a valid JSON object in this format without any other text or markdown:
+  return `You are a master Manga, Manhwa, and Comic Translator.
+Analyze this comic page image with extreme precision and exhaustive completeness.
+Detect and translate EVERY SINGLE piece of foreign text across the entire page, including:
+1. Standard dialogue speech bubbles (round, oval, square).
+2. Spiky, jagged, starburst, explosive shout and screaming bubbles (e.g. dramatic dialogue like "정말... 즐겨도 되는 거냐고요!!"). DO NOT overlook or skip spiky/explosion speech bubbles!
+3. Dark, black, and inverted speech bubbles.
+4. Stylized sound effects (SFX / 의성어 / 의태어), exclamations, moans, and whispers (e.g. "찌릿", "하아", "읏", "크윽!!", "쿵", "솨악", "탁", "철썩") floating across panels, character bodies, or backgrounds.
+5. Monologue, thought clouds, and narrative caption boxes.
+
+Translate all text accurately and naturally into ${targetLang}.
+Keep dialogue punchy, expressive, and formatted in natural comic style UPPERCASE.
+
+Return STRICTLY a JSON object in this format without any other text or markdown:
 {
   "bubbles": [
     {
       "box_2d": [ymin, xmin, ymax, xmax],
       "raw_text": "<original foreign text in bubble>",
       "translated_text": "<NATURAL TRANSLATION IN UPPERCASE>",
-      "background": "white" | "dark" | "transparent"
+      "background": "white" | "dark" | "transparent",
+      "type": "dialogue" | "sfx" | "narration"
     }
   ]
 }
 CRITICAL RULES:
 1. box_2d MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale tightly enclosing the speech bubble interior where text will be rendered.
-2. Detect both white speech bubbles and dark/black speech bubbles (set background: "dark" for black/dark bubbles, "white" for light bubbles).
-3. translated_text must be natural comic dialogue formatted in UPPERCASE.
-4. Output valid JSON only, no markdown explanations.`;
+2. Detect both white speech bubbles and dark/black speech bubbles (set background: "dark" for black/dark bubbles, "white" for light bubbles). For floating SFX without bubbles, set background: "transparent".
+3. EXHAUSTIVE RECALL: Scan from top to bottom. Do NOT stop after detecting 5 or 6 items. Include ALL speech bubbles, shout bubbles, and sound effects across the image.
+4. translated_text must be natural comic dialogue formatted in UPPERCASE.
+5. Output valid JSON only, no markdown explanations.`;
 }
 
 // Cloud Translation Router: 100% serverless proxy via Cloud Vault

@@ -116,11 +116,13 @@ async function handleTranslateRequest(
 
     // 4. Construct Vision Translation Prompt (High-Precision Comic & Manhwa Grounding)
     const prompt = `You are a master Manga, Manhwa, and Comic Translator.
-Analyze this comic page image with extreme precision.
-Detect EVERY piece of foreign text, including:
-1. All speech bubbles (both standard white bubbles AND black/dark/inverted bubbles).
-2. Sound effects (SFX), grunts, moans, shouts, and exclamations (e.g. "싼다!", "크윽!!", "솨악", "하아", etc.).
-3. Monologue, thought, and narrative caption boxes.
+Analyze this comic page image with extreme precision and exhaustive completeness.
+Detect and translate EVERY SINGLE piece of foreign text across the entire page, including:
+1. Standard dialogue speech bubbles (round, oval, square).
+2. Spiky, jagged, starburst, explosive shout and screaming bubbles (e.g. dramatic dialogue like "정말... 즐겨도 되는 거냐고요!!"). DO NOT overlook or skip spiky/explosion speech bubbles!
+3. Dark, black, and inverted speech bubbles.
+4. Stylized sound effects (SFX / 의성어 / 의태어), exclamations, moans, and whispers (e.g. "찌릿", "하아", "읏", "크윽!!", "쿵", "솨악", "탁", "철썩") floating across panels, character bodies, or backgrounds.
+5. Monologue, thought clouds, and narrative caption boxes.
 
 Translate all text accurately and naturally into ${targetLang}.
 Keep dialogue punchy, expressive, and formatted in natural comic style UPPERCASE.
@@ -137,12 +139,13 @@ Return STRICTLY a JSON object with this exact structure:
     }
   ]
 }
-CRITICAL RULES:
+CRITICAL DETECTION RULES:
 - "box_2d" MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale.
 - The bounding box MUST tightly and precisely enclose the FULL extent of the text or speech bubble interior. Do NOT crop or undersize the box — ensure ALL text characters are fully contained within the box.
 - For wide horizontal text, the box must be wide. For tall vertical text, the box must be tall. Match the actual text shape exactly.
-- For dark/black bubbles, set "background": "dark". For white/light bubbles, set "background": "white". For floating SFX with no bubble, set "background": "transparent".
+- For dark/black bubbles, set "background": "dark". For white/light bubbles (including spiky/jagged shout bubbles with white interiors), set "background": "white". For floating SFX with no bubble background, set "background": "transparent".
 - Set "type": "sfx" for sound effects and onomatopoeia. Set "type": "narration" for caption boxes. Set "type": "dialogue" for speech bubbles.
+- EXHAUSTIVE RECALL: Scan from top to bottom. Do NOT stop after detecting 5 or 6 items. If there are 10, 15, or 20 text items on the page, include ALL of them in the bubbles array.
 - NEVER return an empty bubbles array if foreign text is visible on the image. Output valid JSON only, no markdown.`;
 
     // 5. Proxy Translation Request to AI Provider
