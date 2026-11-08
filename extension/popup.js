@@ -56,9 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const signoutBtn = document.getElementById('signout-btn');
 
   // Site toggle elements
+  const siteToggleCard = document.getElementById('site-toggle-card');
   const siteHostnameEl = document.getElementById('site-hostname');
   const siteToggleDesc = document.getElementById('site-toggle-desc');
   const siteActiveToggle = document.getElementById('site-active-toggle');
+  const headerStatusBadge = document.getElementById('header-status-badge');
   let currentSiteHostname = '';
   let enabledSites = [];
 
@@ -214,6 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function showSignedOut() {
     signedOutView.style.display = 'block';
     signedInView.style.display = 'none';
+    if (headerStatusBadge) {
+      headerStatusBadge.className = 'header-status inactive';
+      headerStatusBadge.innerHTML = '<span class="status-dot inactive"></span><span>Offline</span>';
+    }
   }
 
   function showSignedIn(localData) {
@@ -721,16 +727,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateSiteToggleUI() {
     if (!currentSiteHostname) {
-      if (siteToggleDesc) siteToggleDesc.textContent = 'Open a website to manage';
+      if (siteToggleDesc) {
+        siteToggleDesc.textContent = 'Open a website to manage';
+        siteToggleDesc.className = 'site-status off';
+      }
+      if (siteToggleCard) {
+        siteToggleCard.className = 'site-hero disabled';
+      }
       return;
     }
     const isEnabled = enabledSites.includes(currentSiteHostname);
     if (siteActiveToggle) siteActiveToggle.checked = isEnabled;
+
     if (siteToggleDesc) {
       siteToggleDesc.textContent = isEnabled
         ? 'Extension is active on this site'
         : 'Extension is disabled on this site';
-      siteToggleDesc.style.color = isEnabled ? '' : '#ef4444';
+      siteToggleDesc.className = isEnabled ? 'site-status on' : 'site-status off';
+    }
+
+    if (siteToggleCard) {
+      siteToggleCard.className = isEnabled ? 'site-hero enabled' : 'site-hero disabled';
+    }
+
+    if (headerStatusBadge && currentToken) {
+      if (isEnabled) {
+        headerStatusBadge.className = 'header-status active';
+        headerStatusBadge.innerHTML = '<span class="status-dot active"></span><span>Active</span>';
+      } else {
+        headerStatusBadge.className = 'header-status inactive';
+        headerStatusBadge.innerHTML = '<span class="status-dot inactive"></span><span>Paused</span>';
+      }
     }
   }
 
