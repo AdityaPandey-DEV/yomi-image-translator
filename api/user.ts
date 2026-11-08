@@ -146,6 +146,7 @@ async function handleGet(
     mode: 'private',
     autoTranslate: false,
     targetLang: 'en',
+    enabledSites: [],
     displayName: '',
     email: email || '',
   };
@@ -157,6 +158,7 @@ async function handleGet(
       mode: parsed.mode || 'private',
       autoTranslate: parsed.autoTranslate ?? false,
       targetLang: parsed.targetLang || 'en',
+      enabledSites: parsed.enabledSites || [],
       displayName: parsed.displayName || '',
       email: parsed.email || email || '',
     };
@@ -203,7 +205,7 @@ async function handlePut(
   idToken: string,
   body: any
 ): Promise<{ status: number; data: any }> {
-  const allowedFields = ['mode', 'autoTranslate', 'targetLang'];
+  const allowedFields = ['mode', 'autoTranslate', 'targetLang', 'enabledSites'];
   const fieldsToUpdate: Record<string, any> = {};
   const fieldPaths: string[] = [];
 
@@ -212,6 +214,13 @@ async function handlePut(
       fieldPaths.push(field);
       if (typeof body[field] === 'boolean') {
         fieldsToUpdate[field] = { booleanValue: body[field] };
+      } else if (Array.isArray(body[field])) {
+        // Array field (e.g. enabledSites)
+        fieldsToUpdate[field] = {
+          arrayValue: {
+            values: body[field].map((v: string) => ({ stringValue: String(v) })),
+          },
+        };
       } else {
         fieldsToUpdate[field] = { stringValue: String(body[field]) };
       }
@@ -219,7 +228,7 @@ async function handlePut(
   }
 
   if (fieldPaths.length === 0) {
-    return { status: 400, data: { error: 'No valid fields to update. Allowed: mode, autoTranslate, targetLang.' } };
+    return { status: 400, data: { error: 'No valid fields to update. Allowed: mode, autoTranslate, targetLang, enabledSites.' } };
   }
 
   // Build update mask query params
@@ -386,6 +395,11 @@ function parseFirestoreFields(fields: Record<string, any> | undefined): Record<s
     else if ('doubleValue' in val) res[key] = val.doubleValue;
     else if ('timestampValue' in val) res[key] = val.timestampValue;
     else if ('nullValue' in val) res[key] = null;
+    else if ('arrayValue' in val) {
+      res[key] = (val.arrayValue?.values || []).map((v: any) =>
+        v.stringValue ?? v.integerValue ?? v.booleanValue ?? v.doubleValue ?? null
+      );
+    }
   }
   return res;
 }

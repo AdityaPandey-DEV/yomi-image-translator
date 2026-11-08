@@ -55,6 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const openDashboardBtn = document.getElementById('open-dashboard-btn');
   const signoutBtn = document.getElementById('signout-btn');
 
+  // Site toggle elements
+  const siteHostnameEl = document.getElementById('site-hostname');
+  const siteToggleDesc = document.getElementById('site-toggle-desc');
+  const siteActiveToggle = document.getElementById('site-active-toggle');
+  let currentSiteHostname = '';
+  let enabledSites = [];
+
   // Provider configuration
   const PROVIDERS = {
     google: {
@@ -153,6 +160,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentToken = null;
   let currentMode = 'private';
+
+  // Detect current tab hostname for per-site toggle
+  if (chrome.tabs?.query) {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs && tabs[0]?.url) {
+        try {
+          const url = new URL(tabs[0].url);
+          currentSiteHostname = url.hostname;
+          if (siteHostnameEl) siteHostnameEl.textContent = currentSiteHostname || 'No site detected';
+        } catch (_) {
+          if (siteHostnameEl) siteHostnameEl.textContent = 'N/A';
+        }
+      } else {
+        if (siteHostnameEl) siteHostnameEl.textContent = 'No site detected';
+      }
+      updateSiteToggleUI();
+    });
+  }
 
   // Model selection state (matching Dashboard.tsx)
   let dynamicModels = CURATED_MODELS.google;
@@ -281,6 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
         targetLangSelect.value = lang;
       }
       chrome.storage.sync.set({ targetLang: lang });
+
+      // Update Enabled Sites whitelist (from database — all sites OFF by default)
+      enabledSites = Array.isArray(profile.enabledSites) ? profile.enabledSites : [];
+      chrome.storage.local.set({ enabledSites });
+      updateSiteToggleUI();
 
       // Render API Key Vault list
       renderKeysList(keys);
@@ -680,6 +710,74 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           console.warn('[Popup] Error saving targetLang to database:', err);
         }
+      }
+    });
+  }
+
+  // ============================================================
+  // 5b. Per-Site Whitelist Toggle (Database Synced)
+  //     All sites are OFF by default. User explicitly enables sites.
+  // ============================================================
+
+  function updateSiteToggleUI() {
+    if (!currentSiteHostname) {
+      if (siteToggleDesc) siteToggleDesc.textContent = 'Open a website to manage';
+      return;
+    }
+    const isEnabled = enabledSites.includes(currentSiteHostname);
+    if (siteActiveToggle) siteActiveToggle.checked = isEnabled;
+    if (siteToggleDesc) {
+      siteToggleDesc.textContent = isEnabled
+        ? 'Extension is active on this site'
+        : 'Extension is disabled on this site';
+      siteToggleDesc.style.color = isEnabled ? '' : '#ef4444';
+    }
+  }
+
+  if (siteActiveToggle) {
+    siteActiveToggle.addEventListener('change', async () => {
+      if (!currentSiteHostname) return;
+      const shouldEnable = siteActiveToggle.checked;
+
+      if (shouldEnable) {
+        if (!enabledSites.includes(currentSiteHostname)) {
+          enabledSites.push(currentSiteHostname);
+        }
+      } else {
+        enabledSites = enabledSites.filter(s => s !== currentSiteHostname);
+      }
+
+      // Persist to local storage immediately (content script reads this)
+      chrome.storage.local.set({ enabledSites });
+      updateSiteToggleUI();
+
+      // Sync to database (single source of truth)
+      if (currentToken) {
+        try {
+          await fetch(`${BASE_URL}/api/user`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${currentToken}`,
+            },
+            body: JSON.stringify({ enabledSites }),
+          });
+        } catch (err) {
+          console.warn('[Popup] Error saving enabledSites to database:', err);
+        }
+      }
+
+      // Notify content script on active tab to enable/disable immediately
+      if (chrome.tabs?.query) {
+        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+          if (tabs?.[0]?.id) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'SITE_TOGGLE',
+              hostname: currentSiteHostname,
+              enabled: shouldEnable,
+            }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+          }
+        });
       }
     });
   }

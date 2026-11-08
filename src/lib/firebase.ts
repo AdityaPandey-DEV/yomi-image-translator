@@ -132,6 +132,7 @@ export interface UserProfile {
   mode: 'private' | 'shared'; // private = own key only, shared = contribute to pool
   autoTranslate?: boolean;
   targetLang?: string;
+  enabledSites?: string[]; // hostnames where extension is activated (whitelist — all sites OFF by default)
   createdAt: any;
   lastLoginAt: any;
 }

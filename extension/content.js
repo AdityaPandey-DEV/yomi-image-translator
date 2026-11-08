@@ -146,6 +146,8 @@
   
   let autoTranslate = false;
   let targetLang = 'en';
+  let siteEnabled = false; // Whitelist: ALL sites OFF by default
+  const currentHostname = window.location.hostname;
   
   // Rate-limiting queue
   const translationQueue = [];
@@ -158,9 +160,21 @@
       autoTranslate = Boolean(data?.autoTranslate);
       targetLang = data?.targetLang || 'en';
     });
+    // Check if current site is in the whitelist
+    chrome.storage.local.get(['enabledSites'], data => {
+      const sites = Array.isArray(data?.enabledSites) ? data.enabledSites : [];
+      const wasEnabled = siteEnabled;
+      siteEnabled = sites.includes(currentHostname);
+      // If just enabled, trigger a scan
+      if (siteEnabled && !wasEnabled) {
+        scanImages();
+      }
+    });
   }
   loadSettings();
-  chrome.storage.onChanged.addListener(() => loadSettings());
+  chrome.storage.onChanged.addListener((changes, area) => {
+    loadSettings();
+  });
 
   // Debounce helper
   function debounce(fn, ms) {
@@ -191,6 +205,9 @@
 
   // Scan page for manga/comic images without touching yomi elements
   function scanImages() {
+    // Whitelist check: only scan if user has explicitly enabled this site
+    if (!siteEnabled) return;
+
     const images = document.querySelectorAll(`img:not([${PROCESSED_ATTR}])`);
     images.forEach(img => {
       // Ignore avatars, icons, badges, and images inside our own wrapper
@@ -766,8 +783,8 @@
   startMutationObserver();
   scanImages();
 
-  // Context Menu trigger
-  chrome.runtime.onMessage.addListener(request => {
+  // Context Menu trigger + Site Toggle message
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'TRANSLATE_IMAGE_SRC') {
       const match = Array.from(document.querySelectorAll('img')).find(
         i => (i.currentSrc || i.src) === request.srcUrl
@@ -777,6 +794,16 @@
         const gateBtn = wrapper?.querySelector('.yomi-gate-button');
         manualTrigger(match, wrapper, gateBtn);
       }
+    }
+
+    // Real-time site toggle from popup
+    if (request.action === 'SITE_TOGGLE' && request.hostname === currentHostname) {
+      siteEnabled = Boolean(request.enabled);
+      if (siteEnabled) {
+        // Site just enabled — scan for images
+        scanImages();
+      }
+      sendResponse({ success: true });
     }
   });
 })();
