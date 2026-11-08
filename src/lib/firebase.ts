@@ -238,11 +238,47 @@ export async function getSharedKey(provider: string): Promise<{ apiKey: string; 
 }
 
 // ============================================================
-// Extension Integration: Send auth token to Chrome extension
-// Dual-Bridge: Content Script postMessage + externally_connectable
+// Extension Integration: 3-Layer Auth Sync (Professional Grade)
+//
+// Layer 1 (PRIMARY):  externally_connectable — direct to background SW
+//   Most reliable. Bypasses content scripts. Works even after
+//   extension reload. Only fails if extension is uninstalled.
+//
+// Layer 2 (BACKUP):   Content script window.postMessage bridge
+//   Works when content script is alive. Fails after ext reload.
+//
+// Layer 3 (RECOVERY): localStorage persistence — popup.js reads
+//   this via chrome.scripting.executeScript when Layers 1 & 2 fail.
 // ============================================================
 
-/** Attempt to send auth credentials to the installed Chrome extension */
+/** Write auth session to localStorage as Layer 3 recovery fallback */
+function persistSessionToLocalStorage(
+  token: string,
+  email: string,
+  displayName: string,
+  photoURL: string,
+  mode: string
+): void {
+  try {
+    localStorage.setItem(
+      'mmt_auth_session',
+      JSON.stringify({ token, email, displayName, photoURL, mode, ts: Date.now() })
+    );
+  } catch {
+    // localStorage may be unavailable in some contexts
+  }
+}
+
+/** Clear auth session from localStorage (on sign-out) */
+export function clearSessionFromLocalStorage(): void {
+  try {
+    localStorage.removeItem('mmt_auth_session');
+  } catch {
+    // Ignore
+  }
+}
+
+/** Send auth credentials to the Chrome extension via 3-layer architecture */
 export function sendTokenToExtension(
   idToken: string,
   email: string = '',
@@ -250,18 +286,54 @@ export function sendTokenToExtension(
   photoURL: string = '',
   mode: string = 'private'
 ): Promise<boolean> {
+  // Layer 3: Always persist to localStorage as recovery fallback
+  persistSessionToLocalStorage(idToken, email, displayName, photoURL, mode);
+
   return new Promise((resolve) => {
     let resolved = false;
+    const done = (success: boolean) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(success);
+      }
+    };
 
-    // 1. Post to Content Script Bridge (Universal, works in developer mode & Web Store)
+    // Layer 1 (PRIMARY): Direct externally_connectable relay
+    // This goes straight to background.js onMessageExternal — no content script needed
+    if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      try {
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          {
+            type: 'AUTH_TOKEN',
+            token: idToken,
+            email,
+            displayName,
+            photoURL,
+            mode,
+          },
+          (response: any) => {
+            if (chrome.runtime.lastError) {
+              console.log('[Auth] externally_connectable unavailable:', chrome.runtime.lastError.message);
+              // Extension not installed or ID mismatch — fall through to Layer 2
+            } else if (response?.success) {
+              console.log('[Auth] ✅ Synced via externally_connectable (Layer 1)');
+              done(true);
+            }
+          }
+        );
+      } catch {
+        // chrome.runtime not available in this context
+      }
+    }
+
+    // Layer 2 (BACKUP): Content script window.postMessage bridge
     if (typeof window !== 'undefined') {
       const handleSynced = (e: MessageEvent) => {
         if (e.data?.type === 'MMT_AUTH_SYNCED') {
           window.removeEventListener('message', handleSynced);
-          if (!resolved) {
-            resolved = true;
-            resolve(true);
-          }
+          console.log('[Auth] ✅ Synced via content script bridge (Layer 2)');
+          done(true);
         }
       };
       window.addEventListener('message', handleSynced);
@@ -278,46 +350,57 @@ export function sendTokenToExtension(
         window.location.origin
       );
 
-      // Clean up event listener after 2s
+      // Clean up listener after 2.5s
       setTimeout(() => {
         window.removeEventListener('message', handleSynced);
-      }, 2000);
+      }, 2500);
     }
 
-    // 2. Direct externally_connectable relay (as backup)
+    // Resolve after 1s even if neither layer confirmed
+    // (Layer 3 localStorage fallback is already written above)
+    setTimeout(() => {
+      if (!resolved) {
+        console.log('[Auth] Layers 1 & 2 timed out — Layer 3 localStorage recovery available');
+        done(true); // localStorage fallback is in place
+      }
+    }, 1000);
+  });
+}
+
+/** Notify extension of sign-out via externally_connectable + content script */
+export function sendSignOutToExtension(): Promise<void> {
+  clearSessionFromLocalStorage();
+
+  return new Promise((resolve) => {
+    let done = false;
+
+    // Layer 1: Direct to background service worker
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
         chrome.runtime.sendMessage(
           EXTENSION_ID,
-          {
-            type: 'AUTH_TOKEN',
-            token: idToken,
-            email,
-            displayName,
-            photoURL,
-            mode,
-          },
-          (response: any) => {
-            if (!chrome.runtime.lastError && response?.success) {
-              if (!resolved) {
-                resolved = true;
-                resolve(true);
-              }
+          { type: 'AUTH_SIGNOUT' },
+          () => {
+            if (!chrome.runtime.lastError) {
+              console.log('[Auth] 🔒 Sign-out sent via externally_connectable');
             }
+            if (!done) { done = true; resolve(); }
           }
         );
       } catch {
-        // Ignored
+        // Extension not available
       }
     }
 
-    // Fallback: If postMessage was sent, assume successful dispatch after 800ms
+    // Layer 2: Content script bridge
+    if (typeof window !== 'undefined') {
+      window.postMessage({ type: 'MMT_AUTH_SIGNOUT' }, window.location.origin);
+    }
+
+    // Resolve after 500ms regardless
     setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        resolve(true);
-      }
-    }, 800);
+      if (!done) { done = true; resolve(); }
+    }, 500);
   });
 }
 

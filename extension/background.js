@@ -70,6 +70,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'AUTH_TOKEN' && request.token) {
+    // BACKUP path: Content script relays token from webpage postMessage
     const isAllowed =
       !sender.tab ||
       (sender.tab.url && sender.tab.url.startsWith('https://manga-manhwa-translator.vercel.app'));
@@ -89,8 +90,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         authTimestamp: Date.now(),
       },
       () => {
-        console.log('[Translator Background] Synced auth token to local storage!');
+        console.log('[Auth] ✅ Synced auth via content script (backup path)');
         sendResponse({ success: true, message: 'Extension authenticated!' });
+      }
+    );
+    return true;
+  }
+
+  if (request.action === 'AUTH_SIGNOUT') {
+    chrome.storage.local.remove(
+      ['firebaseToken', 'userEmail', 'userName', 'userPhoto', 'userMode', 'authTimestamp'],
+      () => {
+        console.log('[Auth] 🔒 Signed out via content script relay');
+        sendResponse({ success: true });
       }
     );
     return true;
@@ -102,38 +114,59 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Listen for external auth token relay from our companion website
+// ============================================================
+// PRIMARY Auth Bridge: externally_connectable (Website → Extension)
+// This is the most reliable path — bypasses content scripts entirely.
+// The website calls chrome.runtime.sendMessage(EXTENSION_ID, payload)
+// which arrives here directly at the service worker.
+// ============================================================
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  // Validate sender URL strictly against production domain
-  const isValidOrigin = sender.url && sender.url.startsWith('https://manga-manhwa-translator.vercel.app');
-
-  if (!isValidOrigin) {
+  // Strict origin validation (defense-in-depth beyond manifest matches)
+  const ALLOWED_ORIGIN = 'https://manga-manhwa-translator.vercel.app';
+  if (!sender.url || !sender.url.startsWith(ALLOWED_ORIGIN)) {
+    console.warn('[Auth] Rejected external message from unauthorized origin:', sender.url);
     sendResponse({ success: false, error: 'Unauthorized sender origin' });
     return true;
   }
 
+  // --- Sign In / Token Sync ---
   if (message.type === 'AUTH_TOKEN' && message.token) {
-    chrome.storage.local.set(
-      {
-        firebaseToken: message.token,
-        userEmail: message.email || '',
-        userName: message.displayName || '',
-        userPhoto: message.photoURL || '',
-        userMode: message.mode || 'private',
-        authTimestamp: Date.now(),
-      },
-      () => {
-        console.log('[Translator] Successfully synced auth token from website!');
-        sendResponse({ success: true, message: 'Extension authenticated successfully!' });
-      }
-    );
-    return true; // Keep channel open
+    const authPayload = {
+      firebaseToken: message.token,
+      userEmail: message.email || '',
+      userName: message.displayName || '',
+      userPhoto: message.photoURL || '',
+      userMode: message.mode || 'private',
+      authTimestamp: Date.now(),
+    };
+    chrome.storage.local.set(authPayload, () => {
+      console.log('[Auth] ✅ Synced auth via externally_connectable (primary path)');
+      sendResponse({ success: true, message: 'Extension authenticated!' });
+    });
+    return true;
   }
 
+  // --- Sign Out ---
+  if (message.type === 'AUTH_SIGNOUT') {
+    chrome.storage.local.remove(
+      ['firebaseToken', 'userEmail', 'userName', 'userPhoto', 'userMode', 'authTimestamp'],
+      () => {
+        console.log('[Auth] 🔒 Signed out via externally_connectable');
+        sendResponse({ success: true, message: 'Extension signed out.' });
+      }
+    );
+    return true;
+  }
+
+  // --- Extension Detection Handshake ---
   if (message.type === 'CHECK_EXTENSION_INSTALLED') {
     sendResponse({ success: true, version: '1.1.0' });
     return true;
   }
+
+  // Unknown message type
+  sendResponse({ success: false, error: 'Unknown message type' });
+  return true;
 });
 
 // Universal image fetcher converting ArrayBuffer to Base64 in safe 8KB chunks

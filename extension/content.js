@@ -1,22 +1,35 @@
-// Manga & Manhwa Image Translator - Content Script v1.0.0
+// Manga & Manhwa Image Translator - Content Script v2.0.0
 // Features: Queue-based rate limiting, zero-flicker DOM isolation, anti-infinite-loop guards.
+// Auth: 3-layer sync architecture with sign-out propagation.
 
 (() => {
+  const PORTAL_ORIGIN = 'https://manga-manhwa-translator.vercel.app';
+
   // ============================================================
-  // Companion Website Bridge (manga-manhwa-translator.vercel.app)
+  // Companion Website Bridge (BACKUP auth path — Layer 2)
+  // PRIMARY auth goes via externally_connectable directly to
+  // background.js, bypassing this content script entirely.
+  // This bridge is the secondary path + sign-out propagation.
   // ============================================================
-  if (window.location.origin === 'https://manga-manhwa-translator.vercel.app') {
+  if (window.location.origin === PORTAL_ORIGIN) {
+
+    // --- DOM Bridge: read token from hidden React element ---
     function trySyncFromDom() {
       const bridge = document.getElementById('mmt-auth-bridge');
       if (bridge && bridge.dataset.token) {
-        chrome.runtime.sendMessage({
-          action: 'AUTH_TOKEN',
-          token: bridge.dataset.token,
-          email: bridge.dataset.email || '',
-          displayName: bridge.dataset.name || '',
-          photoURL: bridge.dataset.photo || '',
-          mode: bridge.dataset.mode || 'private',
-        });
+        try {
+          chrome.runtime.sendMessage({
+            action: 'AUTH_TOKEN',
+            token: bridge.dataset.token,
+            email: bridge.dataset.email || '',
+            displayName: bridge.dataset.name || '',
+            photoURL: bridge.dataset.photo || '',
+            mode: bridge.dataset.mode || 'private',
+          });
+        } catch (e) {
+          // Extension context invalidated — silently ignore
+          console.warn('[MMT Content] Extension context invalidated:', e.message);
+        }
         return true;
       }
       return false;
@@ -25,8 +38,12 @@
     // Immediate DOM check
     trySyncFromDom();
 
-    // DOM Mutation observer to catch token as soon as React sets it
+    // DOM Mutation observer — catches token as React hydrates
+    let domSyncThrottle = 0;
     const domObserver = new MutationObserver(() => {
+      const now = Date.now();
+      if (now - domSyncThrottle < 500) return; // Throttle to 2 checks/sec
+      domSyncThrottle = now;
       trySyncFromDom();
     });
 
@@ -41,50 +58,74 @@
       });
     }
 
-    // 1. Listen for window messages from the web app
+    // --- Window Message Listener (from React web app) ---
     window.addEventListener('message', event => {
-      if (event.source !== window || event.origin !== 'https://manga-manhwa-translator.vercel.app') return;
+      if (event.source !== window || event.origin !== PORTAL_ORIGIN) return;
 
+      // Auth sync relay
       if (event.data && event.data.type === 'MMT_AUTH_SYNC') {
         const payload = event.data.payload || event.data;
         if (payload.token) {
-          chrome.runtime.sendMessage(
-            {
-              action: 'AUTH_TOKEN',
-              token: payload.token,
-              email: payload.email || '',
-              displayName: payload.displayName || '',
-              photoURL: payload.photoURL || '',
-              mode: payload.mode || 'private',
-            },
-            res => {
-              if (res?.success) {
-                window.postMessage({ type: 'MMT_AUTH_SYNCED', success: true }, 'https://manga-manhwa-translator.vercel.app');
+          try {
+            chrome.runtime.sendMessage(
+              {
+                action: 'AUTH_TOKEN',
+                token: payload.token,
+                email: payload.email || '',
+                displayName: payload.displayName || '',
+                photoURL: payload.photoURL || '',
+                mode: payload.mode || 'private',
+              },
+              res => {
+                if (chrome.runtime.lastError) {
+                  console.warn('[MMT Content] sendMessage error:', chrome.runtime.lastError.message);
+                  return;
+                }
+                if (res?.success) {
+                  window.postMessage({ type: 'MMT_AUTH_SYNCED', success: true }, PORTAL_ORIGIN);
+                }
               }
-            }
-          );
+            );
+          } catch (e) {
+            console.warn('[MMT Content] Extension context invalidated:', e.message);
+          }
         }
       }
 
+      // Sign-out relay
+      if (event.data && event.data.type === 'MMT_AUTH_SIGNOUT') {
+        try {
+          chrome.runtime.sendMessage({ action: 'AUTH_SIGNOUT' }, res => {
+            if (chrome.runtime.lastError) return;
+            if (res?.success) {
+              window.postMessage({ type: 'MMT_SIGNOUT_CONFIRMED', success: true }, PORTAL_ORIGIN);
+            }
+          });
+        } catch (e) {
+          // Extension invalidated
+        }
+      }
+
+      // Extension detection ping
       if (event.data && event.data.type === 'MMT_CHECK_EXTENSION') {
-        window.postMessage({ type: 'MMT_EXTENSION_PONG', version: '1.1.0' }, 'https://manga-manhwa-translator.vercel.app');
+        window.postMessage({ type: 'MMT_EXTENSION_PONG', version: '2.0.0' }, PORTAL_ORIGIN);
       }
     });
 
-    // 2. Listen for messages from background/popup requesting auth from webpage
+    // --- Messages from background/popup requesting auth ---
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'REQUEST_AUTH_FROM_PAGE') {
         const synced = trySyncFromDom();
         if (!synced) {
-          window.postMessage({ type: 'MMT_REQUEST_AUTH' }, 'https://manga-manhwa-translator.vercel.app');
+          window.postMessage({ type: 'MMT_REQUEST_AUTH' }, PORTAL_ORIGIN);
         }
         sendResponse({ success: true, syncedFromDom: synced });
         return true;
       }
     });
 
-    // 3. Signal to webpage that extension content script is active
-    window.postMessage({ type: 'MMT_EXTENSION_READY', version: '1.1.0' }, 'https://manga-manhwa-translator.vercel.app');
+    // Signal to webpage that content script is alive
+    window.postMessage({ type: 'MMT_EXTENSION_READY', version: '2.0.0' }, PORTAL_ORIGIN);
 
     // On our companion website, skip manga image scanner
     return;

@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../lib/AuthContext';
 import {
   signOutUser, saveApiKey, deleteApiKey, updateUserMode,
-  getIdToken, sendTokenToExtension, type StoredApiKey
+  getIdToken, sendTokenToExtension, sendSignOutToExtension, type StoredApiKey
 } from '../lib/firebase';
 import { fetchLiveModels, getStaticCuratedModels, type DynamicModel } from '../services/modelDiscovery';
 
@@ -325,6 +325,8 @@ export function Dashboard() {
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
+      // Notify extension FIRST (so it clears storage before Firebase clears session)
+      await sendSignOutToExtension();
       await signOutUser();
     } catch (err) {
       console.error('Sign out error:', err);
