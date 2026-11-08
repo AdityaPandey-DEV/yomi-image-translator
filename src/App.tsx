@@ -28,7 +28,7 @@ import { UploadCloud, Loader2 } from 'lucide-react';
 const DEFAULT_BYOK_CONFIG: BYOKConfig = {
   activeProvider: 'google',
   googleApiKey: '',
-  googleModel: 'gemini-3.8-flash',
+  googleModel: 'gemini-2.5-flash',
   openaiApiKey: '',
   openaiModel: 'gpt-4o',
   anthropicApiKey: '',

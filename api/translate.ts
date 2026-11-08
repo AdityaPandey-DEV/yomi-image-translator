@@ -1,147 +1,116 @@
-// Vercel Serverless API: Translation Proxy
-// Universal Node (req, res) + Web (Request) handler supporting Vercel Serverless Functions
-// Authenticates via Firebase ID token, retrieves key from Firestore, proxies to AI provider.
+// Vercel Serverless API: Translation Proxy (Zero-Dependency Lightweight REST Engine)
+// Authenticates via Google Identity Toolkit REST API, retrieves keys from Firestore REST API,
+// and proxies the translation request to the AI provider.
+// Eliminates heavy native dependencies (firebase-admin/grpc) for 100% serverless uptime.
 
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+declare const process: any;
 
-function getAdminServices() {
-  if (getApps().length === 0) {
-    let serviceAccount: any = undefined;
-    const rawSa = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (rawSa) {
-      try {
-        serviceAccount = JSON.parse(rawSa);
-      } catch (e) {
-        console.error('[Firebase Admin Init] Error parsing FIREBASE_SERVICE_ACCOUNT JSON:', e);
-      }
-    }
-
-    const projectId = process.env.FIREBASE_PROJECT_ID || 'sample-firebase-ai-app-fec3e';
-
-    if (serviceAccount && serviceAccount.private_key) {
-      initializeApp({ credential: cert(serviceAccount) });
-    } else {
-      initializeApp({ projectId });
-    }
+export default async function handler(req: any, res: any) {
+  // Handle Web Request environment (if invoked by Edge or Fetch runner)
+  if (typeof Request !== 'undefined' && req instanceof Request && (!res || typeof res.status !== 'function')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const body = await req.json().catch(() => ({}));
+    const { status, data } = await handleTranslateRequest(authHeader, body);
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
   }
 
-  return {
-    auth: getAuth(),
-    db: getFirestore(),
-  };
+  // Standard Node.js Serverless runtime (req, res)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization || req.headers.Authorization || null;
+  const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+
+  const { status, data } = await handleTranslateRequest(authHeader, body);
+  return res.status(status).json(data);
 }
 
+export { handler as POST };
+
 // ============================================================
-// Core Translation Logic
+// Core Translation Processing
 // ============================================================
 
-async function processTranslation({
-  authHeader,
-  body,
-}: {
-  authHeader: string | null;
-  body: any;
-}): Promise<{ status: number; data: any }> {
+async function handleTranslateRequest(
+  authHeader: string | null,
+  body: any
+): Promise<{ status: number; data: any }> {
   try {
     if (!authHeader?.startsWith('Bearer ')) {
-      return { status: 401, data: { error: 'Missing or invalid Authorization token. Please sign in.' } };
+      return { status: 401, data: { error: 'Missing or invalid Authorization token. Please sign in via the extension.' } };
     }
 
-    const idToken = authHeader.slice(7);
-    const { auth, db } = getAdminServices();
+    const idToken = authHeader.slice(7).trim();
+    if (!idToken) {
+      return { status: 401, data: { error: 'Empty authentication token. Please sign in again.' } };
+    }
 
-    let decodedToken;
+    const firebaseApiKey =
+      process.env.VITE_FIREBASE_API_KEY ||
+      process.env.FIREBASE_API_KEY ||
+      'AIzaSyBwW1-xZ_yYeYsC-VjwO4PCNL3sQKvPdp8';
+
+    const projectId =
+      process.env.VITE_FIREBASE_PROJECT_ID ||
+      process.env.FIREBASE_PROJECT_ID ||
+      'sample-firebase-ai-app-fec3e';
+
+    // 1. Verify Firebase ID Token using Google Identity Toolkit REST API
+    let uid: string;
     try {
-      decodedToken = await auth.verifyIdToken(idToken);
-    } catch (authErr: any) {
-      console.warn('[Firebase Auth Token Verify Error]', authErr?.message);
+      const authUser = await verifyFirebaseToken(idToken, firebaseApiKey);
+      uid = authUser.uid;
+    } catch {
       return {
         status: 401,
-        data: { error: 'Invalid or expired login session. Please sign in again on manga-manhwa-translator.vercel.app.' },
+        data: { error: 'Your session has expired. Please click the extension icon and sign in to refresh.' },
       };
     }
 
-    const uid = decodedToken.uid;
-    const { imageBase64, mimeType, targetLang, provider: requestedProvider } = body || {};
-
-    if (!imageBase64 || !targetLang) {
-      return { status: 400, data: { error: 'Missing required translation fields: imageBase64, targetLang' } };
+    const { imageBase64, mimeType, targetLang = 'en', provider: requestedProvider } = body;
+    if (!imageBase64) {
+      return { status: 400, data: { error: 'Missing imageBase64 in request body.' } };
     }
 
-    // Determine translation mode & key
-    const userDoc = await db.doc(`users/${uid}`).get();
-    const userData = userDoc.data() || {};
-    const mode = userData.mode || 'private';
+    // 2. Fetch User Mode from Firestore
+    const mode = await getUserMode(projectId, uid, idToken);
 
-    let provider = requestedProvider;
-    let apiKey: string | null = null;
-    let model: string = '';
-    let keyDocRef: any = null;
+    // 3. Retrieve Key (from user's vault, or fallback to community pool if in shared mode)
+    let keyInfo = await getUserKey(projectId, uid, idToken, requestedProvider);
 
-    // A. Check user's specific provider key
-    if (provider) {
-      const docRef = db.doc(`users/${uid}/keys/${provider}`);
-      const keyDoc = await docRef.get();
-      if (keyDoc.exists) {
-        const keyData = keyDoc.data()!;
-        if (keyData.isActive && keyData.apiKey) {
-          apiKey = keyData.apiKey;
-          model = keyData.model || '';
-          keyDocRef = docRef;
-        }
-      }
+    if (!keyInfo && mode === 'shared') {
+      keyInfo = await getSharedKey(projectId, idToken, requestedProvider);
     }
 
-    // B. Check ANY active personal key in user's vault
-    if (!apiKey) {
-      const userKeysSnap = await db.collection(`users/${uid}/keys`).where('isActive', '==', true).limit(1).get();
-      if (!userKeysSnap.empty) {
-        const firstDoc = userKeysSnap.docs[0];
-        const keyData = firstDoc.data();
-        provider = keyData.provider;
-        apiKey = keyData.apiKey;
-        model = keyData.model || '';
-        keyDocRef = firstDoc.ref;
-      }
-    }
-
-    // C. If still no personal key and in shared mode, pick from community pool
-    if (!apiKey && mode === 'shared') {
-      const poolSnap = await db
-        .collection('shared_keys')
-        .where('isActive', '==', true)
-        .orderBy('usageCount', 'asc')
-        .limit(1)
-        .get();
-
-      if (!poolSnap.empty) {
-        const poolDoc = poolSnap.docs[0];
-        const poolKey = poolDoc.data();
-        provider = poolKey.provider;
-        apiKey = poolKey.apiKey;
-        model = poolKey.model || '';
-        await poolDoc.ref.update({
-          usageCount: (poolKey.usageCount || 0) + 1,
-          lastUsedAt: new Date(),
-        }).catch(() => {});
-      }
-    }
-
-    if (!apiKey) {
+    if (!keyInfo?.apiKey) {
       return {
         status: 403,
         data: {
           error:
             mode === 'shared'
-              ? 'No active keys in the community pool right now. Please contribute an API key in your Cloud Vault to start translating.'
+              ? 'No active keys in the shared community pool right now. Please add an API key at manga-manhwa-translator.vercel.app.'
               : 'No active API key found in your Cloud Vault. Please add an API key at https://manga-manhwa-translator.vercel.app to start translating.',
         },
       };
     }
 
-    // Vision prompt
+    // 4. Construct Vision Translation Prompt
     const prompt = `You are an expert Manga, Manhwa, and Comic Translator.
 Analyze this comic page image. Locate every speech bubble, monologue box, and dialogue text.
 Translate all dialogue naturally and accurately into ${targetLang}.
@@ -158,10 +127,13 @@ Return strictly a valid JSON object in this exact format:
 }
 CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only, no markdown.`;
 
-    let result;
-    if (provider === 'google') {
-      result = await callGemini(apiKey, model || 'gemini-3.8-flash', prompt, imageBase64, mimeType);
-    } else if (provider === 'openrouter') {
+    // 5. Proxy Translation Request to AI Provider
+    let result: any;
+    const provider = keyInfo.provider;
+    const model = keyInfo.model;
+    const apiKey = keyInfo.apiKey;
+
+    if (provider === 'openrouter') {
       result = await callOpenRouter(apiKey, model || 'google/gemini-2.0-flash-001', prompt, imageBase64, mimeType);
     } else if (provider === 'openai') {
       result = await callOpenAI(apiKey, model || 'gpt-4o-mini', prompt, imageBase64, mimeType);
@@ -170,93 +142,206 @@ CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only, no 
     } else if (provider === 'groq') {
       result = await callGroq(apiKey, model || 'llama-3.2-11b-vision-preview', prompt, imageBase64, mimeType);
     } else {
-      result = await callGemini(apiKey, 'gemini-3.8-flash', prompt, imageBase64, mimeType);
-    }
-
-    // Increment personal usage counter
-    if (keyDocRef) {
-      const snap = await keyDocRef.get();
-      if (snap.exists) {
-        await keyDocRef.update({
-          usageCount: ((snap.data()?.usageCount) || 0) + 1,
-          lastUsedAt: new Date(),
-        }).catch(() => {});
-      }
+      // Default: Google Gemini
+      result = await callGemini(apiKey, model, prompt, imageBase64, mimeType);
     }
 
     return { status: 200, data: { success: true, result } };
   } catch (err: any) {
-    console.error('[API /translate Error]', err);
-    return { status: 500, data: { error: err.message || 'Translation proxy error' } };
+    console.error('[Translation Proxy Error]', err);
+    return { status: 500, data: { error: err.message || 'Translation failed' } };
   }
 }
 
 // ============================================================
-// Standard Vercel Serverless Function Handler (Node.js)
+// Google REST API Helpers (Zero-Dependency)
 // ============================================================
 
-export default async function handler(req: any, res: any) {
-  // If called in a Web Request environment (e.g. Edge runtime or test suite)
-  if (req instanceof Request && (!res || typeof res.status !== 'function')) {
-    const authHeader = req.headers.get('Authorization');
-    const body = await req.json().catch(() => ({}));
-    const { status, data } = await processTranslation({ authHeader, body });
-    return new Response(JSON.stringify(data), {
-      status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
+async function verifyFirebaseToken(idToken: string, apiKey: string): Promise<{ uid: string; email?: string }> {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.users?.[0]) {
+    throw new Error(json.error?.message || 'Token verification failed');
   }
 
-  // Standard Node.js Vercel Serverless runtime
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const authHeader = req.headers.authorization || req.headers.Authorization || null;
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
-  const { status, data } = await processTranslation({ authHeader, body });
-  return res.status(status).json(data);
+  return {
+    uid: json.users[0].localId,
+    email: json.users[0].email,
+  };
 }
 
-// Also export POST for Fetch API runners
-export { handler as POST };
+async function getUserMode(projectId: string, uid: string, idToken: string): Promise<string> {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!res.ok) return 'private';
+    const json = await res.json();
+    const data = parseFirestoreFields(json.fields);
+    return data.mode || 'private';
+  } catch {
+    return 'private';
+  }
+}
+
+async function getUserKey(
+  projectId: string,
+  uid: string,
+  idToken: string,
+  requestedProvider?: string
+): Promise<{ apiKey: string; model: string; provider: string } | null> {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}/keys`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.documents || json.documents.length === 0) return null;
+
+    // Check requested provider first
+    for (const doc of json.documents) {
+      const data = parseFirestoreFields(doc.fields);
+      if (data.isActive !== false && data.apiKey) {
+        if (!requestedProvider || data.provider === requestedProvider) {
+          return {
+            apiKey: data.apiKey,
+            model: data.model || '',
+            provider: data.provider || 'google',
+          };
+        }
+      }
+    }
+
+    // Return first active key
+    for (const doc of json.documents) {
+      const data = parseFirestoreFields(doc.fields);
+      if (data.isActive !== false && data.apiKey) {
+        return {
+          apiKey: data.apiKey,
+          model: data.model || '',
+          provider: data.provider || 'google',
+        };
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function getSharedKey(
+  projectId: string,
+  idToken: string,
+  requestedProvider?: string
+): Promise<{ apiKey: string; model: string; provider: string } | null> {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/shared_keys`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.documents || json.documents.length === 0) return null;
+
+    for (const doc of json.documents) {
+      const data = parseFirestoreFields(doc.fields);
+      if (data.isActive !== false && data.apiKey) {
+        if (!requestedProvider || data.provider === requestedProvider) {
+          return {
+            apiKey: data.apiKey,
+            model: data.model || '',
+            provider: data.provider || 'google',
+          };
+        }
+      }
+    }
+
+    const first = parseFirestoreFields(json.documents[0].fields);
+    if (first.apiKey) {
+      return {
+        apiKey: first.apiKey,
+        model: first.model || '',
+        provider: first.provider || 'google',
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function parseFirestoreFields(fields: Record<string, any> | undefined): Record<string, any> {
+  if (!fields) return {};
+  const res: Record<string, any> = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if ('stringValue' in val) res[key] = val.stringValue;
+    else if ('booleanValue' in val) res[key] = val.booleanValue;
+    else if ('integerValue' in val) res[key] = parseInt(val.integerValue, 10);
+    else if ('doubleValue' in val) res[key] = val.doubleValue;
+    else if ('timestampValue' in val) res[key] = val.timestampValue;
+  }
+  return res;
+}
 
 // ============================================================
-// Multimodal Vision Callers
+// Model Normalization & Multimodal Vision Callers
 // ============================================================
+
+function normalizeGeminiModel(model?: string): string {
+  if (!model) return 'gemini-3.5-flash';
+  const m = model.toLowerCase().trim();
+  if (m === 'gemini-3.8-flash' || m === 'auto') return 'gemini-3.5-flash';
+  if (m === 'gemini-3.1-flash-lite') return 'gemini-3.5-flash-lite';
+  return model.trim();
+}
 
 async function callGemini(apiKey: string, model: string, prompt: string, base64: string, mime: string) {
+  let targetModel = normalizeGeminiModel(model);
   const genConfig: any = { response_mime_type: 'application/json' };
-  if (model.includes('3.') || model.includes('2.5')) {
+  if (targetModel.includes('2.5') || targetModel.includes('3.') || targetModel.includes('thinking')) {
     genConfig.thinking_config = { thinking_budget: 0 };
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime || 'image/jpeg', data: base64 } }] }],
-        generationConfig: genConfig,
-      }),
-    }
-  );
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error?.message || `Gemini API error ${res.status}`);
+  const makeRequest = async (mName: string, config: any) => {
+    return await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${mName}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime || 'image/jpeg', data: base64 } }] }],
+          generationConfig: config,
+        }),
+      }
+    );
+  };
+
+  let res = await makeRequest(targetModel, genConfig);
+  let json = await res.json();
+
+  // 1. If thinking_config is not supported by this model, retry without it
+  if (!res.ok && (json.error?.message?.includes('thinking') || json.error?.message?.includes('generationConfig'))) {
+    delete genConfig.thinking_config;
+    res = await makeRequest(targetModel, genConfig);
+    json = await res.json();
+  }
+
+  // 2. If model not found (e.g. 404), fallback to high-availability stable models
+  if (!res.ok && res.status === 404) {
+    console.warn(`[Gemini Proxy] Model ${targetModel} returned 404, falling back to gemini-2.5-flash`);
+    targetModel = 'gemini-2.5-flash';
+    delete genConfig.thinking_config;
+    res = await makeRequest(targetModel, genConfig);
+    json = await res.json();
+  }
+
+  if (!res.ok) {
+    throw new Error(json.error?.message || `Gemini API error ${res.status}`);
+  }
+
   const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
   return parseAiJson(raw);
 }

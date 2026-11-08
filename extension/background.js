@@ -253,9 +253,9 @@ async function callGeminiVision(imageUrl, targetLang, byok) {
   const apiKey = (byok.googleApiKey || '').trim();
   if (!apiKey) throw new Error('Google Gemini API key is missing. Click the popup to get a free key from Google AI Studio.');
 
-  let requestedModel = byok.googleModel || 'gemini-3.8-flash';
-  if (requestedModel === 'gemini-2.5-flash' || requestedModel === 'auto' || !requestedModel) {
-    requestedModel = 'gemini-3.8-flash';
+  let requestedModel = byok.googleModel || 'gemini-2.5-flash';
+  if (requestedModel === 'auto' || !requestedModel) {
+    requestedModel = 'gemini-2.5-flash';
   }
 
   const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
@@ -767,7 +767,7 @@ async function discoverBestFlashModel(apiKey) {
     console.warn('[Translator] Failed to query dynamic models:', err);
   }
 
-  return 'gemini-3.8-flash';
+  return 'gemini-2.5-flash';
 }
 
 function mockMangaDetection(targetLang) {

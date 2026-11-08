@@ -169,13 +169,13 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="gemini-3.8-flash">Gemini 3.8 Flash (Latest & Recommended by Google)</option>
-                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Ultra Fast)</option>
-                    <option value="gemini-3.1-flash">Gemini 3.1 Flash (Next-Gen Multimodal)</option>
-                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable)</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Classic)</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended · Fastest Frontier Vision)</option>
+                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Lowest Latency & Budget)</option>
+                    <option value="gemini-3.1-pro">Gemini 3.1 Pro (Advanced Logic & Hard Dialogue)</option>
+                    <option value="gemini-3.0-pro">Gemini 3.0 Pro (Frontier Multimodal)</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Proven High-Speed Stable)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Multimodal Reasoning)</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable Workhorse)</option>
                   </select>
                 </div>
               </div>
@@ -219,19 +219,20 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                 <div>
                   <label className="text-xs text-neutral-400 block mb-1">Model Version</label>
                   <select
-                    value={localConfig.openrouterModel || 'google/gemini-2.0-flash-001'}
+                    value={localConfig.openrouterModel || 'google/gemini-3.5-flash'}
                     onChange={e =>
                       setLocalConfig(prev => ({ ...prev, openrouterModel: e.target.value }))
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="google/gemini-2.0-flash-001">Google Gemini 2.0 Flash (Fast & Cheap)</option>
-                    <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini</option>
-                    <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku (Crisp Manga OCR)</option>
+                    <option value="google/gemini-3.5-flash">Google Gemini 3.5 Flash (Frontier & Fast)</option>
+                    <option value="google/gemini-2.5-flash">Google Gemini 2.5 Flash</option>
+                    <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Budget)</option>
+                    <option value="openai/gpt-4o">OpenAI GPT-4o Flagship</option>
+                    <option value="anthropic/claude-sonnet-5-5">Anthropic Claude Sonnet 5.5</option>
+                    <option value="anthropic/claude-haiku-5-5">Anthropic Claude Haiku 5.5</option>
                     <option value="deepseek/deepseek-chat">DeepSeek V3</option>
                     <option value="meta-llama/llama-3.2-11b-vision-instruct">Llama 3.2 11B Vision</option>
-                    <option value="openai/gpt-4o">OpenAI GPT-4o Flagship</option>
-                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet Flagship</option>
                   </select>
                 </div>
               </div>
@@ -281,8 +282,10 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="gpt-4o-mini">GPT-4o Mini (Fast & Budget)</option>
-                    <option value="gpt-4o">GPT-4o (High-Res Multimodal)</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini (Fast & Budget Multimodal)</option>
+                    <option value="gpt-4o">GPT-4o (Omni Multimodal Standard)</option>
+                    <option value="gpt-4.5">GPT-4.5 (Frontier Deep Visual Intuition)</option>
+                    <option value="o3-mini">o3-mini (High-Speed Reasoning)</option>
                   </select>
                 </div>
               </div>
@@ -332,8 +335,12 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Ultra Fast)</option>
-                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                    <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (Flagship Balanced)</option>
+                    <option value="claude-haiku-5-5">Claude Haiku 5.5 (Ultra Fast Vision)</option>
+                    <option value="claude-opus-5-5">Claude Opus 5.5 (Frontier Reasoning)</option>
+                    <option value="claude-3-7-sonnet">Claude 3.7 Sonnet (Hybrid Reasoning)</option>
+                    <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Classic)</option>
+                    <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Classic)</option>
                   </select>
                 </div>
               </div>

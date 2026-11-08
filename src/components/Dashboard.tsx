@@ -18,9 +18,13 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   google: {
     name: 'Google Gemini',
     models: [
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Latest)' },
-      { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (Ultra Fast)' },
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Stable)' },
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (Recommended · Fastest Frontier Vision)' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Lowest Latency & Budget)' },
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro (Advanced Logic & Hard Dialogue)' },
+      { id: 'gemini-3.0-pro', name: 'Gemini 3.0 Pro (Frontier Multimodal)' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Proven High-Speed Stable)' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Deep Multimodal Reasoning)' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Stable Workhorse)' },
     ],
     placeholder: 'AIzaSy...',
     getKeyUrl: 'https://aistudio.google.com/app/apikey',
@@ -29,9 +33,13 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   openrouter: {
     name: 'OpenRouter',
     models: [
-      { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Cheap)' },
+      { id: 'google/gemini-3.5-flash', name: 'Gemini 3.5 Flash (Frontier & Fast)' },
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
       { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
-      { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku' },
+      { id: 'openai/gpt-4o', name: 'GPT-4o Flagship' },
+      { id: 'anthropic/claude-sonnet-5-5', name: 'Claude Sonnet 5.5' },
+      { id: 'anthropic/claude-haiku-5-5', name: 'Claude Haiku 5.5' },
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3' },
     ],
     placeholder: 'sk-or-v1-...',
     getKeyUrl: 'https://openrouter.ai/keys',
@@ -40,8 +48,10 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   openai: {
     name: 'OpenAI',
     models: [
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Fast & Budget Multimodal)' },
+      { id: 'gpt-4o', name: 'GPT-4o (Omni Multimodal Standard)' },
+      { id: 'gpt-4.5', name: 'GPT-4.5 (Frontier Deep Visual Intuition)' },
+      { id: 'o3-mini', name: 'o3-mini (High-Speed Reasoning)' },
     ],
     placeholder: 'sk-proj-...',
     getKeyUrl: 'https://platform.openai.com/api-keys',
@@ -50,8 +60,12 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   anthropic: {
     name: 'Anthropic Claude',
     models: [
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5 (Flagship Balanced)' },
+      { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5 (Ultra Fast Vision)' },
+      { id: 'claude-opus-5-5', name: 'Claude Opus 5.5 (Frontier Reasoning)' },
+      { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Reasoning)' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Classic)' },
+      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Classic)' },
     ],
     placeholder: 'sk-ant-...',
     getKeyUrl: 'https://console.anthropic.com/settings/keys',
@@ -60,8 +74,8 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   groq: {
     name: 'Groq',
     models: [
-      { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision' },
-      { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision' },
+      { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision (Ultra Fast)' },
+      { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision (High Capacity)' },
     ],
     placeholder: 'gsk_...',
     getKeyUrl: 'https://console.groq.com/keys',
@@ -70,7 +84,8 @@ const PROVIDERS: Record<string, { name: string; models: { id: string; name: stri
   deepseek: {
     name: 'DeepSeek',
     models: [
-      { id: 'deepseek-chat', name: 'DeepSeek V3' },
+      { id: 'deepseek-chat', name: 'DeepSeek V3 (Fast Multilingual Reasoning)' },
+      { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Advanced Chain of Thought)' },
     ],
     placeholder: 'sk-...',
     getKeyUrl: 'https://platform.deepseek.com/api_keys',
