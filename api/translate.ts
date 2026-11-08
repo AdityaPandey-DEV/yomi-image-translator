@@ -300,9 +300,12 @@ function normalizeGeminiModel(model?: string): string {
 
 async function callGemini(apiKey: string, model: string, prompt: string, base64: string, mime: string) {
   let targetModel = normalizeGeminiModel(model);
-  const genConfig: any = { response_mime_type: 'application/json' };
+  let safeMime = (mime || 'image/jpeg').trim();
+  if (!safeMime.startsWith('image/')) safeMime = 'image/jpeg';
+
+  const genConfig: any = { responseMimeType: 'application/json' };
   if (targetModel.includes('2.5') || targetModel.includes('3.') || targetModel.includes('thinking')) {
-    genConfig.thinking_config = { thinking_budget: 0 };
+    genConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
   const makeRequest = async (mName: string, config: any) => {
@@ -312,7 +315,20 @@ async function callGemini(apiKey: string, model: string, prompt: string, base64:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime || 'image/jpeg', data: base64 } }] }],
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType: safeMime,
+                    data: base64,
+                  },
+                },
+              ],
+            },
+          ],
           generationConfig: config,
         }),
       }
@@ -322,18 +338,18 @@ async function callGemini(apiKey: string, model: string, prompt: string, base64:
   let res = await makeRequest(targetModel, genConfig);
   let json = await res.json();
 
-  // 1. If thinking_config is not supported by this model, retry without it
-  if (!res.ok && (json.error?.message?.includes('thinking') || json.error?.message?.includes('generationConfig'))) {
-    delete genConfig.thinking_config;
+  // 1. If thinkingConfig or generationConfig causes error, retry with bare config
+  if (!res.ok && (json.error?.message?.includes('thinking') || json.error?.message?.includes('argument') || json.error?.message?.includes('generationConfig'))) {
+    delete genConfig.thinkingConfig;
     res = await makeRequest(targetModel, genConfig);
     json = await res.json();
   }
 
-  // 2. If model not found (e.g. 404), fallback to high-availability stable models
-  if (!res.ok && res.status === 404) {
+  // 2. If model not found (404), fallback to stable gemini-2.5-flash
+  if (!res.ok && (res.status === 404 || json.error?.code === 404)) {
     console.warn(`[Gemini Proxy] Model ${targetModel} returned 404, falling back to gemini-2.5-flash`);
     targetModel = 'gemini-2.5-flash';
-    delete genConfig.thinking_config;
+    delete genConfig.thinkingConfig;
     res = await makeRequest(targetModel, genConfig);
     json = await res.json();
   }

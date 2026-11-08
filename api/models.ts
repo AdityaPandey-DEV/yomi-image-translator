@@ -249,3 +249,4 @@ function getCuratedModels(provider: string) {
       return [{ id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' }];
   }
 }
+
