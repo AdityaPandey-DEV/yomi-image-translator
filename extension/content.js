@@ -96,19 +96,17 @@
   
   let autoTranslate = false;
   let targetLang = 'en';
-  let byok = {};
   
-  // Rate-limiting queue to stay well under Gemini Free Tier limits (15 requests/min)
+  // Rate-limiting queue
   const translationQueue = [];
   let isQueueProcessing = false;
   let isRateLimitedUntil = 0;
 
   // Load extension settings from storage
   function loadSettings() {
-    chrome.storage.sync.get(['autoTranslate', 'targetLang', 'byok'], data => {
+    chrome.storage.sync.get(['autoTranslate', 'targetLang'], data => {
       autoTranslate = Boolean(data?.autoTranslate);
       targetLang = data?.targetLang || 'en';
-      byok = data?.byok || {};
     });
   }
   loadSettings();
@@ -306,7 +304,7 @@
         chrome.runtime.sendMessage(
           {
             action: 'TRANSLATE_PAYLOAD',
-            data: { imageUrl: src, targetLang, byok },
+            data: { imageUrl: src, targetLang },
           },
           res => {
             if (chrome.runtime.lastError) {

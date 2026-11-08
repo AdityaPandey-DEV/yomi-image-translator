@@ -2,6 +2,10 @@
 // Features: Zero-Knowledge Cloud Vault, Auto-Detection & Dual Auth Bridge
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Purge any legacy plaintext API keys from browser sync/local storage
+  chrome.storage.sync.remove(['byok', 'googleApiKey', 'openaiApiKey', 'anthropicApiKey', 'openrouterApiKey', 'groqApiKey', 'deepseekApiKey']);
+  chrome.storage.local.remove(['byok', 'googleApiKey', 'openaiApiKey', 'anthropicApiKey', 'openrouterApiKey', 'groqApiKey', 'deepseekApiKey']);
+
   const signedOutView = document.getElementById('signed-out-view');
   const signedInView = document.getElementById('signed-in-view');
 

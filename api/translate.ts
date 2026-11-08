@@ -53,46 +53,64 @@ export async function POST(request: Request): Promise<Response> {
     const userDoc = await adminDb.doc(`users/${uid}`).get();
     const userData = userDoc.data() || {};
     const mode = userData.mode || 'private';
-    const provider = requestedProvider || 'google';
 
+    let provider = requestedProvider;
     let apiKey: string | null = null;
     let model: string = '';
+    let keyDocRef: any = null;
 
-    // Try user's own key first
-    const keyDoc = await adminDb.doc(`users/${uid}/keys/${provider}`).get();
-    if (keyDoc.exists) {
-      const keyData = keyDoc.data()!;
-      if (keyData.isActive && keyData.apiKey) {
-        apiKey = keyData.apiKey;
-        model = keyData.model || '';
+    // A. Try requested provider from user's vault
+    if (provider) {
+      const docRef = adminDb.doc(`users/${uid}/keys/${provider}`);
+      const keyDoc = await docRef.get();
+      if (keyDoc.exists) {
+        const keyData = keyDoc.data()!;
+        if (keyData.isActive && keyData.apiKey) {
+          apiKey = keyData.apiKey;
+          model = keyData.model || '';
+          keyDocRef = docRef;
+        }
       }
     }
 
-    // If no personal key and user is in shared mode, try the pool
+    // B. If no key found for requested provider, check ANY active key in user's vault
+    if (!apiKey) {
+      const userKeysSnap = await adminDb.collection(`users/${uid}/keys`).where('isActive', '==', true).limit(1).get();
+      if (!userKeysSnap.empty) {
+        const doc = userKeysSnap.docs[0];
+        const keyData = doc.data();
+        provider = keyData.provider;
+        apiKey = keyData.apiKey;
+        model = keyData.model || '';
+        keyDocRef = doc.ref;
+      }
+    }
+
+    // C. If still no personal key and user is in shared mode, pick from community pool
     if (!apiKey && mode === 'shared') {
       const poolSnap = await adminDb
         .collection('shared_keys')
-        .where('provider', '==', provider)
         .where('isActive', '==', true)
         .orderBy('usageCount', 'asc')
         .limit(1)
         .get();
 
       if (!poolSnap.empty) {
-        const poolKey = poolSnap.docs[0].data();
+        const poolDoc = poolSnap.docs[0];
+        const poolKey = poolDoc.data();
+        provider = poolKey.provider;
         apiKey = poolKey.apiKey;
         model = poolKey.model || '';
-        // Increment usage counter
-        await poolSnap.docs[0].ref.update({
+        await poolDoc.ref.update({
           usageCount: (poolKey.usageCount || 0) + 1,
           lastUsedAt: new Date(),
-        });
+        }).catch(() => {});
       }
     }
 
     if (!apiKey) {
       return Response.json({
-        error: `No API key found for ${provider}. Please add one in your dashboard, or switch to shared mode.`,
+        error: `No active API key found in your Cloud Vault. Please add an API key at https://manga-manhwa-translator.vercel.app or switch to Shared Mode.`,
       }, { status: 403 });
     }
 
@@ -130,11 +148,14 @@ CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only.`;
     }
 
     // 6. Update usage counter for user's key
-    if (keyDoc.exists) {
-      await keyDoc.ref.update({
-        usageCount: ((keyDoc.data()?.usageCount) || 0) + 1,
-        lastUsedAt: new Date(),
-      });
+    if (keyDocRef) {
+      const snap = await keyDocRef.get();
+      if (snap.exists) {
+        await keyDocRef.update({
+          usageCount: ((snap.data()?.usageCount) || 0) + 1,
+          lastUsedAt: new Date(),
+        }).catch(() => {});
+      }
     }
 
     return Response.json({ success: true, result });

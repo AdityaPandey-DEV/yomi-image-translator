@@ -1,7 +1,33 @@
 // Manga & Manhwa Image Translator - Universal Background Service Worker (Manifest V3)
-// Multimodal vision translation pipeline supporting Google Gemini, OpenRouter, OpenAI, Claude, Groq & DeepSeek.
+// Zero-Knowledge Cloud Vault Architecture: All translations proxy through serverless API.
+// No plaintext API keys are ever stored or processed locally in the extension.
+
+function purgeLegacyLocalKeys() {
+  chrome.storage.sync.remove([
+    'byok',
+    'googleApiKey',
+    'openaiApiKey',
+    'anthropicApiKey',
+    'openrouterApiKey',
+    'groqApiKey',
+    'deepseekApiKey'
+  ]);
+  chrome.storage.local.remove([
+    'byok',
+    'googleApiKey',
+    'openaiApiKey',
+    'anthropicApiKey',
+    'openrouterApiKey',
+    'groqApiKey',
+    'deepseekApiKey'
+  ]);
+}
+
+// Purge any leftover legacy keys on startup
+purgeLegacyLocalKeys();
 
 chrome.runtime.onInstalled.addListener(() => {
+  purgeLegacyLocalKeys();
   chrome.contextMenus.create({
     id: 'translate-manga-image',
     title: 'Translate Manga Image with AI',
@@ -165,74 +191,42 @@ CRITICAL RULES:
 4. Output valid JSON only, no markdown explanations.`;
 }
 
-// Universal translation router
+// Cloud Translation Router: 100% serverless proxy via Cloud Vault
 async function handleTranslation(data) {
-  const { imageUrl, targetLang = 'en', byok = {} } = data;
+  const { imageUrl, targetLang = 'en' } = data;
+
+  // Purge any residual plaintext keys
+  purgeLegacyLocalKeys();
 
   // 1. Check if user is authenticated via web account
   const authState = await new Promise(resolve => {
     chrome.storage.local.get(['firebaseToken', 'userMode'], resolve);
   });
 
-  if (authState?.firebaseToken) {
-    try {
-      const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
-      const res = await fetch('https://manga-manhwa-translator.vercel.app/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authState.firebaseToken}`,
-        },
-        body: JSON.stringify({
-          imageBase64: base64Data,
-          mimeType,
-          targetLang,
-          provider: byok.activeProvider || 'google',
-        }),
-      });
-
-      const json = await res.json();
-      if (res.ok && json.success && json.result) {
-        return json.result;
-      }
-      console.warn('[Cloud Translation Proxy] Fallback to direct client call:', json.error);
-    } catch (apiErr) {
-      console.warn('[Cloud Translation Proxy] Network error, checking local fallback:', apiErr);
-    }
+  if (!authState?.firebaseToken) {
+    throw new Error('Not logged in. Please click the Manga Translator extension icon and sign in to link your Cloud Vault.');
   }
 
-  const provider = byok.activeProvider || detectProvider(byok);
+  const { base64Data, mimeType } = await fetchImageBase64(imageUrl);
+  const res = await fetch('https://manga-manhwa-translator.vercel.app/api/translate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authState.firebaseToken}`,
+    },
+    body: JSON.stringify({
+      imageBase64: base64Data,
+      mimeType,
+      targetLang,
+    }),
+  });
 
-  switch (provider) {
-    case 'openrouter':
-      return await callOpenRouterVision(imageUrl, targetLang, byok);
-    case 'openai':
-      return await callOpenAIVision(imageUrl, targetLang, byok);
-    case 'anthropic':
-      return await callClaudeVision(imageUrl, targetLang, byok);
-    case 'groq':
-      return await callGroqVision(imageUrl, targetLang, byok);
-    case 'deepseek':
-      return await callDeepSeekVision(imageUrl, targetLang, byok);
-    case 'google':
-    default:
-      if (byok.googleApiKey) {
-        return await callGeminiVision(imageUrl, targetLang, byok);
-      }
-      if (byok.openrouterApiKey) {
-        return await callOpenRouterVision(imageUrl, targetLang, byok);
-      }
-      if (byok.openaiApiKey) {
-        return await callOpenAIVision(imageUrl, targetLang, byok);
-      }
-      if (byok.anthropicApiKey) {
-        return await callClaudeVision(imageUrl, targetLang, byok);
-      }
-      if (byok.groqApiKey) {
-        return await callGroqVision(imageUrl, targetLang, byok);
-      }
-      return mockMangaDetection(targetLang);
+  const json = await res.json();
+  if (!res.ok || !json.success || !json.result) {
+    throw new Error(json.error || `Cloud translation error (HTTP ${res.status})`);
   }
+
+  return json.result;
 }
 
 function detectProvider(byok) {
