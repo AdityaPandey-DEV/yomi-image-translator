@@ -163,14 +163,61 @@
     // Check if current site is in the whitelist
     chrome.storage.local.get(['enabledSites'], data => {
       const sites = Array.isArray(data?.enabledSites) ? data.enabledSites : [];
-      const wasEnabled = siteEnabled;
-      siteEnabled = sites.includes(currentHostname);
-      // If just enabled, trigger a scan
-      if (siteEnabled && !wasEnabled) {
-        scanImages();
-      }
+      const isWhitelisted = sites.includes(currentHostname);
+      setSiteActiveState(isWhitelisted);
     });
   }
+
+  function setSiteActiveState(enabled) {
+    siteEnabled = Boolean(enabled);
+    if (siteEnabled) {
+      startMutationObserver();
+      scanImages();
+    } else {
+      cleanUpAllYomiElements();
+    }
+  }
+
+  // Teardown: completely remove all extension elements from the page
+  function cleanUpAllYomiElements() {
+    // 1. Flush any pending queue
+    translationQueue.length = 0;
+    isQueueProcessing = false;
+
+    // 2. Disconnect observers so they don't fire during cleanup
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+    if (scrollObserver) {
+      scrollObserver.disconnect();
+    }
+
+    // 3. Unwrap all wrapped manga images and restore original DOM structure
+    const wrappers = document.querySelectorAll(`.${WRAPPER_CLASS}`);
+    wrappers.forEach(wrapper => {
+      const img = wrapper.querySelector('img');
+      if (img && wrapper.parentNode) {
+        wrapper.parentNode.insertBefore(img, wrapper);
+        img.removeAttribute(PROCESSED_ATTR);
+        delete img.dataset.yomiState;
+      }
+      wrapper.remove();
+    });
+
+    // 4. Remove any orphaned yomi elements (buttons, badges, toasts, hotspots, canvases)
+    document.querySelectorAll('[class*="yomi-"]').forEach(el => {
+      if (el.tagName !== 'IMG') {
+        el.remove();
+      }
+    });
+
+    // 5. Clean up processed markers on all images
+    document.querySelectorAll(`[${PROCESSED_ATTR}]`).forEach(img => {
+      img.removeAttribute(PROCESSED_ATTR);
+      delete img.dataset.yomiState;
+    });
+  }
+
   loadSettings();
   chrome.storage.onChanged.addListener((changes, area) => {
     loadSettings();
@@ -809,9 +856,6 @@
     mutationObserver.observe(document.body, { childList: true, subtree: true });
   }
 
-  startMutationObserver();
-  scanImages();
-
   // Context Menu trigger + Site Toggle message
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'TRANSLATE_IMAGE_SRC') {
@@ -831,14 +875,7 @@
 
     // Real-time site toggle from popup
     if (request.action === 'SITE_TOGGLE' && request.hostname === currentHostname) {
-      siteEnabled = Boolean(request.enabled);
-      if (siteEnabled) {
-        // Site just enabled — scan for images
-        scanImages();
-      } else {
-        // Site just disabled — flush pending queue to stop wasting API calls
-        translationQueue.length = 0;
-      }
+      setSiteActiveState(Boolean(request.enabled));
       sendResponse({ success: true });
     }
   });
