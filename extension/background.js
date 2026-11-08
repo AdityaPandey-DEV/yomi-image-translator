@@ -221,9 +221,16 @@ async function handleTranslation(data) {
     }),
   });
 
-  const json = await res.json();
+  const rawText = await res.text();
+  let json = null;
+  try {
+    json = JSON.parse(rawText);
+  } catch {
+    throw new Error(`Server error (${res.status}). Please verify your backend deployment at manga-manhwa-translator.vercel.app.`);
+  }
+
   if (!res.ok || !json.success || !json.result) {
-    throw new Error(json.error || `Cloud translation error (HTTP ${res.status})`);
+    throw new Error(json.error || `Translation error: HTTP ${res.status}`);
   }
 
   return json.result;

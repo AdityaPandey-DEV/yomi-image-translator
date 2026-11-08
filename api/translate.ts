@@ -1,56 +1,77 @@
 // Vercel Serverless API: Translation Proxy
-// Verifies Firebase Auth token, retrieves user's API key from Firestore,
-// and proxies the translation request to the AI provider.
-// The API key NEVER touches the client in shared mode.
+// Universal Node (req, res) + Web (Request) handler supporting Vercel Serverless Functions
+// Authenticates via Firebase ID token, retrieves key from Firestore, proxies to AI provider.
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin (serverless-safe)
-if (getApps().length === 0) {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : undefined;
+function getAdminServices() {
+  if (getApps().length === 0) {
+    let serviceAccount: any = undefined;
+    const rawSa = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (rawSa) {
+      try {
+        serviceAccount = JSON.parse(rawSa);
+      } catch (e) {
+        console.error('[Firebase Admin Init] Error parsing FIREBASE_SERVICE_ACCOUNT JSON:', e);
+      }
+    }
 
-  initializeApp(
-    serviceAccount
-      ? { credential: cert(serviceAccount) }
-      : { projectId: process.env.FIREBASE_PROJECT_ID || '' }
-  );
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'sample-firebase-ai-app-fec3e';
+
+    if (serviceAccount && serviceAccount.private_key) {
+      initializeApp({ credential: cert(serviceAccount) });
+    } else {
+      initializeApp({ projectId });
+    }
+  }
+
+  return {
+    auth: getAuth(),
+    db: getFirestore(),
+  };
 }
 
-const adminAuth = getAuth();
-const adminDb = getFirestore();
+// ============================================================
+// Core Translation Logic
+// ============================================================
 
-export async function POST(request: Request): Promise<Response> {
+async function processTranslation({
+  authHeader,
+  body,
+}: {
+  authHeader: string | null;
+  body: any;
+}): Promise<{ status: number; data: any }> {
   try {
-    // 1. Extract and verify Firebase ID token
-    const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return Response.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
+      return { status: 401, data: { error: 'Missing or invalid Authorization token. Please sign in.' } };
     }
 
     const idToken = authHeader.slice(7);
+    const { auth, db } = getAdminServices();
+
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch {
-      return Response.json({ error: 'Invalid or expired authentication token. Please sign in again.' }, { status: 401 });
+      decodedToken = await auth.verifyIdToken(idToken);
+    } catch (authErr: any) {
+      console.warn('[Firebase Auth Token Verify Error]', authErr?.message);
+      return {
+        status: 401,
+        data: { error: 'Invalid or expired login session. Please sign in again on manga-manhwa-translator.vercel.app.' },
+      };
     }
 
     const uid = decodedToken.uid;
-
-    // 2. Parse request body
-    const body = await request.json();
-    const { imageBase64, mimeType, targetLang, provider: requestedProvider } = body;
+    const { imageBase64, mimeType, targetLang, provider: requestedProvider } = body || {};
 
     if (!imageBase64 || !targetLang) {
-      return Response.json({ error: 'Missing required fields: imageBase64, targetLang' }, { status: 400 });
+      return { status: 400, data: { error: 'Missing required translation fields: imageBase64, targetLang' } };
     }
 
-    // 3. Determine which API key to use
-    const userDoc = await adminDb.doc(`users/${uid}`).get();
+    // Determine translation mode & key
+    const userDoc = await db.doc(`users/${uid}`).get();
     const userData = userDoc.data() || {};
     const mode = userData.mode || 'private';
 
@@ -59,9 +80,9 @@ export async function POST(request: Request): Promise<Response> {
     let model: string = '';
     let keyDocRef: any = null;
 
-    // A. Try requested provider from user's vault
+    // A. Check user's specific provider key
     if (provider) {
-      const docRef = adminDb.doc(`users/${uid}/keys/${provider}`);
+      const docRef = db.doc(`users/${uid}/keys/${provider}`);
       const keyDoc = await docRef.get();
       if (keyDoc.exists) {
         const keyData = keyDoc.data()!;
@@ -73,22 +94,22 @@ export async function POST(request: Request): Promise<Response> {
       }
     }
 
-    // B. If no key found for requested provider, check ANY active key in user's vault
+    // B. Check ANY active personal key in user's vault
     if (!apiKey) {
-      const userKeysSnap = await adminDb.collection(`users/${uid}/keys`).where('isActive', '==', true).limit(1).get();
+      const userKeysSnap = await db.collection(`users/${uid}/keys`).where('isActive', '==', true).limit(1).get();
       if (!userKeysSnap.empty) {
-        const doc = userKeysSnap.docs[0];
-        const keyData = doc.data();
+        const firstDoc = userKeysSnap.docs[0];
+        const keyData = firstDoc.data();
         provider = keyData.provider;
         apiKey = keyData.apiKey;
         model = keyData.model || '';
-        keyDocRef = doc.ref;
+        keyDocRef = firstDoc.ref;
       }
     }
 
-    // C. If still no personal key and user is in shared mode, pick from community pool
+    // C. If still no personal key and in shared mode, pick from community pool
     if (!apiKey && mode === 'shared') {
-      const poolSnap = await adminDb
+      const poolSnap = await db
         .collection('shared_keys')
         .where('isActive', '==', true)
         .orderBy('usageCount', 'asc')
@@ -109,29 +130,34 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (!apiKey) {
-      return Response.json({
-        error: `No active API key found in your Cloud Vault. Please add an API key at https://manga-manhwa-translator.vercel.app or switch to Shared Mode.`,
-      }, { status: 403 });
+      return {
+        status: 403,
+        data: {
+          error:
+            mode === 'shared'
+              ? 'No active keys in the community pool right now. Please contribute an API key in your Cloud Vault to start translating.'
+              : 'No active API key found in your Cloud Vault. Please add an API key at https://manga-manhwa-translator.vercel.app to start translating.',
+        },
+      };
     }
 
-    // 4. Build the translation prompt
+    // Vision prompt
     const prompt = `You are an expert Manga, Manhwa, and Comic Translator.
 Analyze this comic page image. Locate every speech bubble, monologue box, and dialogue text.
 Translate all dialogue naturally and accurately into ${targetLang}.
-Return strictly a valid JSON object:
+Return strictly a valid JSON object in this exact format:
 {
   "bubbles": [
     {
       "box_2d": [ymin, xmin, ymax, xmax],
-      "raw_text": "<original text>",
+      "raw_text": "<original foreign text>",
       "translated_text": "<NATURAL TRANSLATION IN UPPERCASE>",
       "background": "white" | "dark" | "transparent"
     }
   ]
 }
-CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only.`;
+CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only, no markdown.`;
 
-    // 5. Proxy to the AI provider
     let result;
     if (provider === 'google') {
       result = await callGemini(apiKey, model || 'gemini-3.8-flash', prompt, imageBase64, mimeType);
@@ -144,10 +170,10 @@ CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only.`;
     } else if (provider === 'groq') {
       result = await callGroq(apiKey, model || 'llama-3.2-11b-vision-preview', prompt, imageBase64, mimeType);
     } else {
-      return Response.json({ error: `Unsupported provider: ${provider}` }, { status: 400 });
+      result = await callGemini(apiKey, 'gemini-3.8-flash', prompt, imageBase64, mimeType);
     }
 
-    // 6. Update usage counter for user's key
+    // Increment personal usage counter
     if (keyDocRef) {
       const snap = await keyDocRef.get();
       if (snap.exists) {
@@ -158,14 +184,59 @@ CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only.`;
       }
     }
 
-    return Response.json({ success: true, result });
+    return { status: 200, data: { success: true, result } };
   } catch (err: any) {
-    console.error('[API /translate]', err);
-    return Response.json({ error: err.message || 'Internal server error' }, { status: 500 });
+    console.error('[API /translate Error]', err);
+    return { status: 500, data: { error: err.message || 'Translation proxy error' } };
   }
 }
 
-// --- AI Provider Proxies ---
+// ============================================================
+// Standard Vercel Serverless Function Handler (Node.js)
+// ============================================================
+
+export default async function handler(req: any, res: any) {
+  // If called in a Web Request environment (e.g. Edge runtime or test suite)
+  if (req instanceof Request && (!res || typeof res.status !== 'function')) {
+    const authHeader = req.headers.get('Authorization');
+    const body = await req.json().catch(() => ({}));
+    const { status, data } = await processTranslation({ authHeader, body });
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
+
+  // Standard Node.js Vercel Serverless runtime
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization || req.headers.Authorization || null;
+  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+  const { status, data } = await processTranslation({ authHeader, body });
+  return res.status(status).json(data);
+}
+
+// Also export POST for Fetch API runners
+export { handler as POST };
+
+// ============================================================
+// Multimodal Vision Callers
+// ============================================================
 
 async function callGemini(apiKey: string, model: string, prompt: string, base64: string, mime: string) {
   const genConfig: any = { response_mime_type: 'application/json' };
@@ -260,10 +331,9 @@ function parseAiJson(raw: string | undefined) {
   if (!raw) throw new Error('AI returned empty response');
   let cleaned = raw.trim();
   if (cleaned.startsWith('```json')) cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-  else if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/,'');
+  else if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
   const fb = cleaned.indexOf('{');
   const lb = cleaned.lastIndexOf('}');
   if (fb !== -1 && lb > fb) cleaned = cleaned.substring(fb, lb + 1);
   return JSON.parse(cleaned);
 }
-
