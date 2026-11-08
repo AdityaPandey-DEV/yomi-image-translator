@@ -188,7 +188,7 @@
   // Viewport scroll observer: Enqueues images only when they enter active screen
   const scrollObserver = new IntersectionObserver(
     entries => {
-      if (!autoTranslate) return;
+      if (!siteEnabled || !autoTranslate) return;
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const img = entry.target;
@@ -233,6 +233,7 @@
   }
 
   function attachYomiGate(img) {
+    if (!siteEnabled) return; // Don't attach translate buttons on disabled sites
     if (img.getAttribute(PROCESSED_ATTR)) return;
     if (img.closest(`.${WRAPPER_CLASS}`)) return;
 
@@ -274,6 +275,12 @@
 
   // Manual click on button
   function manualTrigger(img, wrapper, gateBtn) {
+    // Block translation if site is disabled
+    if (!siteEnabled) {
+      showToast(wrapper, '🚫 Extension is disabled on this site. Enable it from the popup.', 4000);
+      return;
+    }
+
     const state = img.dataset.yomiState;
 
     // Toggle between translated & raw if already finished
@@ -299,6 +306,9 @@
 
   // Enqueue an image for controlled sequential processing
   function enqueueTranslation(img, highPriority = false) {
+    // Block if site is not whitelisted
+    if (!siteEnabled) return;
+
     if (img.dataset.yomiState === 'queued' || img.dataset.yomiState === 'loading' || img.dataset.yomiState === 'done') {
       return;
     }
@@ -326,6 +336,12 @@
     if (isQueueProcessing) return;
     if (translationQueue.length === 0) return;
 
+    // If site was disabled while items were queued, flush the queue
+    if (!siteEnabled) {
+      translationQueue.length = 0;
+      return;
+    }
+
     // If temporarily rate limited by Gemini, pause queue
     const now = Date.now();
     if (now < isRateLimitedUntil) {
@@ -352,6 +368,19 @@
   }
 
   async function executeImageTranslation(img) {
+    // Final safety check — if site was disabled while queued, abort
+    if (!siteEnabled) {
+      img.dataset.yomiState = 'idle';
+      const wrapper = img.closest(`.${WRAPPER_CLASS}`);
+      const gateBtn = wrapper?.querySelector('.yomi-gate-button');
+      const label = gateBtn?.querySelector('.yomi-btn-label');
+      if (gateBtn) {
+        gateBtn.classList.remove('yomi-loading', 'yomi-queued');
+        if (label) label.innerText = 'Translate';
+      }
+      return;
+    }
+
     const wrapper = img.closest(`.${WRAPPER_CLASS}`);
     const gateBtn = wrapper?.querySelector('.yomi-gate-button');
     const label = gateBtn?.querySelector('.yomi-btn-label');
@@ -786,6 +815,10 @@
   // Context Menu trigger + Site Toggle message
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'TRANSLATE_IMAGE_SRC') {
+      if (!siteEnabled) {
+        sendResponse({ success: false, error: 'Extension is disabled on this site' });
+        return;
+      }
       const match = Array.from(document.querySelectorAll('img')).find(
         i => (i.currentSrc || i.src) === request.srcUrl
       );
@@ -802,6 +835,9 @@
       if (siteEnabled) {
         // Site just enabled — scan for images
         scanImages();
+      } else {
+        // Site just disabled — flush pending queue to stop wasting API calls
+        translationQueue.length = 0;
       }
       sendResponse({ success: true });
     }
