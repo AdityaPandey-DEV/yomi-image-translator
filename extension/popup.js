@@ -38,7 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const keyProviderSelect = document.getElementById('key-provider');
   const keyInput = document.getElementById('key-input');
   const keyGetLink = document.getElementById('key-get-link');
-  const keyModelInput = document.getElementById('key-model');
+  const keyModelSelect = document.getElementById('key-model-select');
+  const modelStatusIndicator = document.getElementById('model-status-indicator');
+  const modelSelectWrapper = document.getElementById('model-select-wrapper');
+  const modelCustomWrapper = document.getElementById('model-custom-wrapper');
+  const keyCustomModel = document.getElementById('key-custom-model');
+  const btnBackToModels = document.getElementById('btn-back-to-models');
+  const shareKeyWrapper = document.getElementById('share-key-wrapper');
+  const keyShareCheckbox = document.getElementById('key-share-checkbox');
   const keyFormError = document.getElementById('key-form-error');
   const btnSaveKey = document.getElementById('btn-save-key');
   const btnCancelKey = document.getElementById('btn-cancel-key');
@@ -100,8 +107,60 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   };
 
+  // Static curated models matching website's getStaticCuratedModels
+  const CURATED_MODELS = {
+    google: [
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (Recommended · Fastest Frontier Vision)' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Lowest Latency & Budget)' },
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro (Advanced Logic & Hard Dialogue)' },
+      { id: 'gemini-3.0-pro', name: 'Gemini 3.0 Pro (Frontier Multimodal)' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Proven High-Speed Stable)' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Deep Visual Reasoning)' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Stable Workhorse)' },
+    ],
+    openrouter: [
+      { id: 'google/gemini-3.5-flash', name: 'Google Gemini 3.5 Flash (Frontier & Fast)' },
+      { id: 'google/gemini-2.5-flash', name: 'Google Gemini 2.5 Flash' },
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'openai/gpt-4o', name: 'GPT-4o Flagship' },
+      { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5' },
+      { id: 'anthropic/claude-haiku-5.5', name: 'Claude Haiku 5.5' },
+      { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3' },
+    ],
+    openai: [
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Fast & Budget Multimodal)' },
+      { id: 'gpt-4o', name: 'GPT-4o (Omni Multimodal Standard)' },
+      { id: 'gpt-4.5', name: 'GPT-4.5 (Frontier Deep Visual Intuition)' },
+      { id: 'o3-mini', name: 'o3-mini (High-Speed Reasoning)' },
+    ],
+    anthropic: [
+      { id: 'claude-sonnet-5.5', name: 'Claude Sonnet 5.5 (Flagship Balanced)' },
+      { id: 'claude-haiku-5.5', name: 'Claude Haiku 5.5 (Ultra Fast Vision)' },
+      { id: 'claude-opus-5.5', name: 'Claude Opus 5.5 (Frontier Reasoning)' },
+      { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Reasoning)' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (Classic)' },
+      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Classic)' },
+    ],
+    groq: [
+      { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision (Ultra Fast)' },
+      { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision (High Capacity)' },
+    ],
+    deepseek: [
+      { id: 'deepseek-chat', name: 'DeepSeek V3 (Fast Multilingual Reasoning)' },
+      { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Advanced Chain of Thought)' },
+    ],
+  };
+
   let currentToken = null;
   let currentMode = 'private';
+
+  // Model selection state (matching Dashboard.tsx)
+  let dynamicModels = CURATED_MODELS.google;
+  let selectedModel = CURATED_MODELS.google[0].id;
+  let isLiveModels = false;
+  let isLoadingModels = false;
+  let isCustomModel = false;
+  let modelDiscoveryTimer = null;
 
   // ============================================================
   // 1. Initial State & Sync
@@ -332,7 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================================
-  // 4. API Key Vault Form (Add New Key)
+  // 4. API Key Vault Form (Add New Key with Model Dropdown)
+  // Matching Dashboard.tsx & BYOKModal.tsx approach exactly
   // ============================================================
 
   if (btnAddKey) {
@@ -356,26 +416,170 @@ document.addEventListener('DOMContentLoaded', () => {
     keyProviderSelect.addEventListener('change', updateProviderFormUI);
   }
 
+  // Model select change listener
+  if (keyModelSelect) {
+    keyModelSelect.addEventListener('change', () => {
+      if (keyModelSelect.value === '__custom__') {
+        isCustomModel = true;
+        if (keyCustomModel) keyCustomModel.value = '';
+        renderModelSection();
+        if (keyCustomModel) keyCustomModel.focus();
+      } else {
+        selectedModel = keyModelSelect.value;
+      }
+    });
+  }
+
+  // Back to list button from custom input
+  if (btnBackToModels) {
+    btnBackToModels.addEventListener('click', () => {
+      isCustomModel = false;
+      if (dynamicModels[0]) selectedModel = dynamicModels[0].id;
+      renderModelSection();
+    });
+  }
+
+  // Render model selection section (matches Dashboard.tsx)
+  function renderModelSection() {
+    // 1. Status Indicator
+    if (modelStatusIndicator) {
+      if (isLoadingModels) {
+        modelStatusIndicator.innerHTML = `
+          <span style="display:inline-flex; align-items:center; gap:4px; color:var(--primary);">
+            <div class="spinner-sm" style="width:9px; height:9px;"></div> Discovering…
+          </span>
+        `;
+      } else if (isLiveModels) {
+        modelStatusIndicator.innerHTML = `
+          <span style="display:inline-flex; align-items:center; gap:4px; color:#4ade80;">
+            <span style="width:5px; height:5px; border-radius:50%; background:#4ade80; box-shadow:0 0 6px #4ade80;"></span>
+            Live API Verified (${dynamicModels.length})
+          </span>
+        `;
+      } else {
+        modelStatusIndicator.innerHTML = `
+          <button type="button" id="btn-check-live-models" style="background:transparent; border:none; color:var(--muted); font-size:10px; cursor:pointer; text-decoration:underline;">
+            Check live models
+          </button>
+        `;
+        const btnCheck = document.getElementById('btn-check-live-models');
+        if (btnCheck) {
+          btnCheck.addEventListener('click', (e) => {
+            e.preventDefault();
+            fetchLiveModelsForForm();
+          });
+        }
+      }
+    }
+
+    // 2. Select vs Custom Mode
+    if (isCustomModel) {
+      if (modelSelectWrapper) modelSelectWrapper.style.display = 'none';
+      if (modelCustomWrapper) modelCustomWrapper.style.display = 'block';
+    } else {
+      if (modelSelectWrapper) modelSelectWrapper.style.display = 'block';
+      if (modelCustomWrapper) modelCustomWrapper.style.display = 'none';
+
+      if (keyModelSelect) {
+        keyModelSelect.innerHTML = dynamicModels
+          .map(m => `<option value="${m.id}">${m.name}</option>`)
+          .join('') + `<option value="__custom__">+ Enter custom model ID...</option>`;
+
+        if (dynamicModels.some(m => m.id === selectedModel)) {
+          keyModelSelect.value = selectedModel;
+        } else if (dynamicModels[0]) {
+          selectedModel = dynamicModels[0].id;
+          keyModelSelect.value = selectedModel;
+        }
+      }
+    }
+  }
+
+  // Live dynamic model discovery matching website
+  async function fetchLiveModelsForForm() {
+    const prov = keyProviderSelect?.value || 'google';
+    const keyVal = keyInput?.value?.trim() || '';
+
+    isLoadingModels = true;
+    renderModelSection();
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/models`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: prov, apiKey: keyVal }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          dynamicModels = data.models;
+          isLiveModels = Boolean(data.isLive);
+          if (!dynamicModels.some(m => m.id === selectedModel)) {
+            selectedModel = dynamicModels[0].id;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Popup] Model discovery error:', err);
+    } finally {
+      isLoadingModels = false;
+      renderModelSection();
+    }
+  }
+
+  function triggerModelDiscoveryDebounced(delay = 600) {
+    clearTimeout(modelDiscoveryTimer);
+    modelDiscoveryTimer = setTimeout(() => {
+      fetchLiveModelsForForm();
+    }, delay);
+  }
+
+  if (keyInput) {
+    keyInput.addEventListener('input', () => {
+      triggerModelDiscoveryDebounced(keyInput.value ? 600 : 0);
+    });
+  }
+
   function updateProviderFormUI() {
     const prov = keyProviderSelect?.value || 'google';
     const info = PROVIDERS[prov] || PROVIDERS.google;
 
     if (keyInput) keyInput.placeholder = info.placeholder;
-    if (keyModelInput) keyModelInput.value = info.defaultModel;
     if (keyGetLink) {
       keyGetLink.href = info.link;
       keyGetLink.textContent = info.linkText;
     }
+
+    // Reset models for this provider to curated list
+    dynamicModels = CURATED_MODELS[prov] || CURATED_MODELS.google;
+    selectedModel = dynamicModels[0]?.id || '';
+    isLiveModels = false;
+    isLoadingModels = false;
+    isCustomModel = false;
+
+    // Show share checkbox in shared mode (matching website)
+    if (shareKeyWrapper) {
+      shareKeyWrapper.style.display = currentMode === 'shared' ? 'block' : 'none';
+    }
+
+    renderModelSection();
+    triggerModelDiscoveryDebounced(0); // Immediately fetch live models if endpoint available
   }
 
   if (btnSaveKey) {
     btnSaveKey.addEventListener('click', async () => {
       const provider = keyProviderSelect?.value || 'google';
       const apiKeyVal = keyInput?.value?.trim();
-      const modelVal = keyModelInput?.value?.trim() || PROVIDERS[provider]?.defaultModel;
+      const finalModel = isCustomModel ? keyCustomModel?.value?.trim() : selectedModel;
 
       if (!apiKeyVal) {
         showKeyError('Please enter an API key.');
+        return;
+      }
+
+      if (!finalModel) {
+        showKeyError('Please select or enter a model ID.');
         return;
       }
 
@@ -383,6 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showKeyError('Authentication token missing. Please sign in.');
         return;
       }
+
+      const isSharedKey = currentMode === 'shared' && Boolean(keyShareCheckbox?.checked);
 
       btnSaveKey.disabled = true;
       btnSaveKey.textContent = 'Saving…';
@@ -398,8 +604,8 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             provider,
             apiKey: apiKeyVal,
-            model: modelVal,
-            isShared: currentMode === 'shared',
+            model: finalModel,
+            isShared: isSharedKey,
           }),
         });
 
@@ -408,8 +614,10 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(json.error || 'Failed to save key.');
         }
 
-        // Key saved! Reset form & refresh keys list
+        // Key saved! Reset form & refresh keys list from database
         if (keyInput) keyInput.value = '';
+        if (keyCustomModel) keyCustomModel.value = '';
+        isCustomModel = false;
         addKeyForm?.classList.remove('visible');
         if (btnAddKey) btnAddKey.style.display = 'flex';
         await loadUserDataFromDatabase();
@@ -419,6 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSaveKey.disabled = false;
         btnSaveKey.textContent = 'Save Key';
       }
+    });
+  }
+
+  function showKeyError(msg) {
+    if (!keyFormError) return;
+    keyFormError.textContent = msg;
+    keyFormError.style.display = 'block';
+  }
     });
   }
 

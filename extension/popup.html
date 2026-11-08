@@ -439,14 +439,19 @@
         <div id="add-key-form" class="add-key-form">
           <div class="form-row">
             <div class="form-label">Provider</div>
-            <select id="key-provider">
-              <option value="google">Google Gemini</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic Claude</option>
-              <option value="groq">Groq</option>
-              <option value="deepseek">DeepSeek</option>
-            </select>
+            <div class="select-wrapper">
+              <select id="key-provider">
+                <option value="google">Google Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic Claude</option>
+                <option value="groq">Groq</option>
+                <option value="deepseek">DeepSeek</option>
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
           </div>
           <div class="form-row">
             <div class="form-label">API Key</div>
@@ -456,8 +461,40 @@
             </a>
           </div>
           <div class="form-row">
-            <div class="form-label">Model</div>
-            <input type="text" id="key-model" placeholder="gemini-2.5-flash" value="gemini-2.5-flash">
+            <div class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Model</span>
+              <span id="model-status-indicator" style="font-size:10px; text-transform:none; letter-spacing:normal; font-weight:normal;"></span>
+            </div>
+
+            <!-- Predefined & dynamic model dropdown -->
+            <div id="model-select-wrapper" class="select-wrapper">
+              <select id="key-model-select">
+                <!-- Dynamically populated -->
+              </select>
+              <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+
+            <!-- Custom Model ID Input (matches website's "+ Enter custom model ID...") -->
+            <div id="model-custom-wrapper" style="display:none;">
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="key-custom-model" placeholder="e.g. gemini-3.5-flash, gpt-4o, claude-sonnet-5.5" style="flex:1; font-family:ui-monospace, monospace; font-size:11px;">
+                <button type="button" id="btn-back-to-models" style="padding:6px 10px; font-size:10.5px; background:var(--input-bg); border:1px solid var(--border); color:var(--muted); border-radius:8px; cursor:pointer; white-space:nowrap;">Back to list</button>
+              </div>
+              <p style="font-size:9.5px; color:var(--dim); margin-top:4px;">You can specify any custom, fine-tuned, or private model ID available to your account.</p>
+            </div>
+          </div>
+
+          <!-- Share Key Checkbox (matches website's shared mode option) -->
+          <div id="share-key-wrapper" class="form-row" style="display:none; margin-top:8px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:var(--input-bg); padding:8px 10px; border-radius:8px; border:1px solid var(--border);">
+              <input type="checkbox" id="key-share-checkbox" style="width:14px; height:14px; accent-color:var(--primary);">
+              <div>
+                <div style="font-size:11px; font-weight:600; color:#fff;">Share this key with community</div>
+                <div style="font-size:9.5px; color:var(--dim);">Others in shared pool can use this key when theirs runs out</div>
+              </div>
+            </label>
           </div>
           <div id="key-form-error" class="form-error" style="display:none;"></div>
           <div class="form-actions">
