@@ -132,13 +132,17 @@ Return STRICTLY a JSON object with this exact structure:
       "box_2d": [ymin, xmin, ymax, xmax],
       "raw_text": "<original foreign text>",
       "translated_text": "<NATURAL TRANSLATION IN UPPERCASE>",
-      "background": "dark" | "white" | "transparent"
+      "background": "dark" | "white" | "transparent",
+      "type": "dialogue" | "sfx" | "narration"
     }
   ]
 }
 CRITICAL RULES:
-- "box_2d" MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale tightly enclosing the speech bubble interior or text boundary.
-- For dark/black bubbles, set "background": "dark". For white/light bubbles, set "background": "white".
+- "box_2d" MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale.
+- The bounding box MUST tightly and precisely enclose the FULL extent of the text or speech bubble interior. Do NOT crop or undersize the box — ensure ALL text characters are fully contained within the box.
+- For wide horizontal text, the box must be wide. For tall vertical text, the box must be tall. Match the actual text shape exactly.
+- For dark/black bubbles, set "background": "dark". For white/light bubbles, set "background": "white". For floating SFX with no bubble, set "background": "transparent".
+- Set "type": "sfx" for sound effects and onomatopoeia. Set "type": "narration" for caption boxes. Set "type": "dialogue" for speech bubbles.
 - NEVER return an empty bubbles array if foreign text is visible on the image. Output valid JSON only, no markdown.`;
 
     // 5. Proxy Translation Request to AI Provider

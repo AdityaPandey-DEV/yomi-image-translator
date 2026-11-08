@@ -526,23 +526,82 @@
       const textColor = isDark ? '#ffffff' : '#0f172a';
       const strokeColor = isDark ? '#000000' : '#ffffff';
 
+      // Detect if this is a sound effect (SFX) vs dialogue bubble
+      const isSfx = Boolean(b.type === 'sfx' || b.is_sfx || b.background === 'transparent');
+
       ctx.save();
 
-      // 3. Seamless in-place inpainting directly covering the original language text
+      // 3. Seamless background cover — use rounded rect for better bubble shape matching
+      //    Expand slightly (4% padding) to ensure full coverage of original text
+      const padX = bw * 0.04;
+      const padY = bh * 0.04;
+      const coverX = left - padX;
+      const coverY = top - padY;
+      const coverW = bw + padX * 2;
+      const coverH = bh + padY * 2;
+
+      // Determine shape: use ellipse for nearly-square or round bubbles, rounded-rect for wider/taller ones
+      const aspectRatio = bw / bh;
+      const isRoundish = aspectRatio > 0.65 && aspectRatio < 1.5 && bw < nw * 0.35;
+
       ctx.fillStyle = bgColor;
       ctx.beginPath();
-      const rx = Math.max(10, (bw / 2) * 0.96);
-      const ry = Math.max(8, (bh / 2) * 0.96);
-      ctx.ellipse(bx, by, rx, ry, 0, 0, Math.PI * 2);
-      ctx.fill();
 
-      // 4. Typeset dialogue with centered multiline word-wrapping
-      let fontSize = Math.max(11, Math.min(26, Math.round(bw / 7)));
-      ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
+      if (isSfx) {
+        // SFX: no background fill — just render bold text with heavy stroke
+        // Skip background
+      } else if (isRoundish) {
+        // Ellipse for round/oval speech bubbles
+        const rx = coverW / 2;
+        const ry = coverH / 2;
+        ctx.ellipse(bx, by, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Rounded rectangle for wide/tall bubbles (more common in manhwa)
+        const cornerRadius = Math.min(12, Math.min(coverW, coverH) * 0.18);
+        roundRect(ctx, coverX, coverY, coverW, coverH, cornerRadius);
+        ctx.fill();
+      }
+
+      // 4. Add a very subtle feathered edge to blend with bubble (non-SFX only)
+      if (!isSfx) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        if (isRoundish) {
+          const outerRx = (coverW / 2) + 2;
+          const outerRy = (coverH / 2) + 2;
+          ctx.ellipse(bx, by, outerRx, outerRy, 0, 0, Math.PI * 2);
+        } else {
+          const cornerRadius = Math.min(12, Math.min(coverW, coverH) * 0.18) + 1;
+          roundRect(ctx, coverX - 1, coverY - 1, coverW + 2, coverH + 2, cornerRadius);
+        }
+        // Create a very thin radial gradient at the edges for softness
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      // 5. Typeset dialogue with centered multiline word-wrapping
+      //    Use larger usable width for text (88% of box width for rounded-rect, 78% for ellipse)
+      const textAreaRatio = isRoundish ? 0.78 : 0.88;
+      const maxLineWidth = Math.max(16, bw * textAreaRatio);
+      const maxTextHeight = bh * (isRoundish ? 0.72 : 0.85);
+
+      // Calculate ideal font size based on text length and box dimensions
+      let fontSize;
+      if (isSfx) {
+        // SFX: bigger, bolder
+        fontSize = Math.max(14, Math.min(48, Math.round(Math.min(bw, bh) * 0.45)));
+      } else {
+        // Dialogue: scale font based on available area
+        const charCount = text.length;
+        const areaSqrt = Math.sqrt(bw * bh);
+        fontSize = Math.max(10, Math.min(32, Math.round(areaSqrt / Math.max(3, Math.sqrt(charCount) * 1.1))));
+      }
+
+      ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", "CC Wild Words", "Manga Temple", -apple-system, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      const maxLineWidth = Math.max(16, bw * 0.82);
+      // Word-wrap into lines
       const words = text.split(/\s+/);
       let lines = [];
       let currentLine = '';
@@ -558,12 +617,28 @@
       }
       if (currentLine) lines.push(currentLine);
 
-      // Downscale font size if lines exceed bubble height
-      let lineHeight = fontSize * 1.25;
-      if (lines.length * lineHeight > bh * 0.82) {
-        fontSize = Math.max(9, Math.round(fontSize * (bh * 0.82 / (lines.length * lineHeight))));
-        ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", -apple-system, sans-serif`;
-        lineHeight = fontSize * 1.2;
+      // Auto-shrink font if text overflows vertically
+      let lineHeight = fontSize * 1.22;
+      let iterations = 0;
+      while (lines.length * lineHeight > maxTextHeight && fontSize > 8 && iterations < 8) {
+        fontSize = Math.max(8, fontSize - 1);
+        ctx.font = `bold ${fontSize}px "WildWords", "Comic Neue", "CC Wild Words", "Manga Temple", -apple-system, sans-serif`;
+        lineHeight = fontSize * 1.22;
+
+        // Re-wrap with new font size
+        lines = [];
+        currentLine = '';
+        for (let word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          if (ctx.measureText(testLine).width > maxLineWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+        iterations++;
       }
 
       const totalHeight = lines.length * lineHeight;
@@ -571,20 +646,29 @@
 
       lines.forEach((line, idx) => {
         const curY = startY + (idx * lineHeight);
-        // Contrast stroke outline for clarity
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 3;
-        ctx.lineJoin = 'round';
-        ctx.strokeText(line, bx, curY, maxLineWidth);
 
-        // Solid lettering
-        ctx.fillStyle = textColor;
-        ctx.fillText(line, bx, curY, maxLineWidth);
+        if (isSfx) {
+          // SFX: heavy black outline + white fill for impact lettering
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = Math.max(4, fontSize * 0.18);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(line, bx, curY, maxLineWidth);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(line, bx, curY, maxLineWidth);
+        } else {
+          // Dialogue: contrast stroke outline for clarity
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = Math.max(2.5, fontSize * 0.12);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(line, bx, curY, maxLineWidth);
+          ctx.fillStyle = textColor;
+          ctx.fillText(line, bx, curY, maxLineWidth);
+        }
       });
 
       ctx.restore();
 
-      // 5. Add interactive hover hotspot showing the original foreign text on hover
+      // 6. Add interactive hover hotspot showing the original foreign text on hover
       if (b.raw_text) {
         const hotspot = document.createElement('div');
         hotspot.className = 'yomi-bubble-hotspot';
@@ -596,6 +680,21 @@
         hotspotLayer.appendChild(hotspot);
       }
     });
+  }
+
+  // Helper: draw a rounded rectangle path
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
   }
 
   function attachToggleBadge(wrapper, img) {
