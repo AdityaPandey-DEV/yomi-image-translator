@@ -317,13 +317,26 @@
       });
 
       if (response?.success && response.result?.bubbles) {
+        const bubbles = response.result.bubbles;
+        console.log('[Translator] Received translation response:', bubbles);
+
+        if (!Array.isArray(bubbles) || bubbles.length === 0) {
+          img.dataset.yomiState = 'idle';
+          if (gateBtn) {
+            gateBtn.classList.remove('yomi-loading', 'yomi-active');
+            if (label) label.innerText = 'Translate';
+          }
+          showToast(wrapper, '🔍 No speech bubbles detected in this image section.', 3500);
+          return;
+        }
+
         img.dataset.yomiState = 'done';
-        renderOverlay(img, wrapper, response.result.bubbles);
+        renderOverlay(img, wrapper, bubbles);
 
         if (gateBtn) {
           gateBtn.classList.remove('yomi-loading');
           gateBtn.classList.add('yomi-active');
-          if (label) label.innerText = 'Translated';
+          if (label) label.innerText = `Translated (${bubbles.length})`;
         }
 
         attachToggleBadge(wrapper, img);
@@ -375,48 +388,83 @@
     }
     hotspotLayer.innerHTML = '';
 
-    const nw = img.naturalWidth || img.clientWidth || img.width;
-    const nh = img.naturalHeight || img.clientHeight || img.height;
+    const rect = img.getBoundingClientRect();
+    const nw = img.naturalWidth || Math.round(rect.width) || img.clientWidth || img.width || 800;
+    const nh = img.naturalHeight || Math.round(rect.height) || img.clientHeight || img.height || 1200;
 
     canvas.width = nw;
     canvas.height = nh;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    bubbles.forEach(b => {
+    console.log(`[Translator] Rendering ${bubbles.length} bubbles on canvas: ${nw}x${nh}`);
+
+    bubbles.forEach((b, index) => {
       const text = (b.translated_text || '').trim();
       if (!text) return;
 
+      let top = 0, left = 0, bottom = 0, right = 0;
       let bx = 0, by = 0, bw = 0, bh = 0;
 
-      // 1. Precise Coordinate Resolution from Google Gemini's box_2d [ymin, xmin, ymax, xmax] (0..1000)
-      if (Array.isArray(b.box_2d) && b.box_2d.length === 4) {
-        const [ymin, xmin, ymax, xmax] = b.box_2d;
-        const top = (ymin / 1000) * nh;
-        const left = (xmin / 1000) * nw;
-        const bottom = (ymax / 1000) * nh;
-        const right = (xmax / 1000) * nw;
+      // 1. Universal Coordinate Resolution (supporting 0..1000, 0.0..1.0, and pixel coordinates)
+      const rawBox = b.box_2d || b.bounding_box || b.box;
+      if (Array.isArray(rawBox) && rawBox.length === 4) {
+        const [y1, x1, y2, x2] = rawBox.map(Number);
+        const maxVal = Math.max(y1, x1, y2, x2);
 
-        bw = Math.max(24, right - left);
-        bh = Math.max(18, bottom - top);
+        if (maxVal <= 1.0) {
+          // Normalized 0.0 - 1.0
+          top = y1 * nh;
+          left = x1 * nw;
+          bottom = y2 * nh;
+          right = x2 * nw;
+        } else if (maxVal <= 1000) {
+          // Normalized 0 - 1000
+          top = (y1 / 1000) * nh;
+          left = (x1 / 1000) * nw;
+          bottom = (y2 / 1000) * nh;
+          right = (x2 / 1000) * nw;
+        } else {
+          // Absolute pixels
+          top = y1;
+          left = x1;
+          bottom = y2;
+          right = x2;
+        }
+
+        bw = Math.max(28, right - left);
+        bh = Math.max(20, bottom - top);
         bx = left + (bw / 2);
         by = top + (bh / 2);
       } else if (b.x !== undefined && b.y !== undefined) {
-        // Fallback for raw pixel coordinates
-        if (b.x <= 1000 && b.y <= 1000 && (nw > 1000 || nh > 1000)) {
-          bx = (b.x / 1000) * nw;
-          by = (b.y / 1000) * nh;
-          bw = (b.width / 1000) * nw;
-          bh = (b.height / 1000) * nh;
+        const bxVal = Number(b.x);
+        const byVal = Number(b.y);
+        const bwVal = Number(b.width || 80);
+        const bhVal = Number(b.height || 40);
+
+        if (bxVal <= 1.0 && byVal <= 1.0) {
+          left = bxVal * nw;
+          top = byVal * nh;
+          bw = Math.max(28, bwVal * nw);
+          bh = Math.max(20, bhVal * nh);
+        } else if (bxVal <= 1000 && nw > 1000) {
+          left = (bxVal / 1000) * nw;
+          top = (byVal / 1000) * nh;
+          bw = Math.max(28, (bwVal / 1000) * nw);
+          bh = Math.max(20, (bhVal / 1000) * nh);
         } else {
-          bx = b.x;
-          by = b.y;
-          bw = b.width;
-          bh = b.height;
+          left = bxVal;
+          top = byVal;
+          bw = bwVal;
+          bh = bhVal;
         }
+        bx = left + (bw / 2);
+        by = top + (bh / 2);
       }
 
       if (bw <= 0 || bh <= 0) return;
+
+      console.log(`[Translator] Bubble #${index + 1}: "${text}" at (${Math.round(bx)}, ${Math.round(by)}) size ${Math.round(bw)}x${Math.round(bh)}`);
 
       // 2. Intelligent Background Color Detection (Dark speech bubbles vs Light speech bubbles)
       const isDark =

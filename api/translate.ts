@@ -110,22 +110,32 @@ async function handleTranslateRequest(
       };
     }
 
-    // 4. Construct Vision Translation Prompt
-    const prompt = `You are an expert Manga, Manhwa, and Comic Translator.
-Analyze this comic page image. Locate every speech bubble, monologue box, and dialogue text.
-Translate all dialogue naturally and accurately into ${targetLang}.
-Return strictly a valid JSON object in this exact format:
+    // 4. Construct Vision Translation Prompt (High-Precision Comic & Manhwa Grounding)
+    const prompt = `You are a master Manga, Manhwa, and Comic Translator.
+Analyze this comic page image with extreme precision.
+Detect EVERY piece of foreign text, including:
+1. All speech bubbles (both standard white bubbles AND black/dark/inverted bubbles).
+2. Sound effects (SFX), grunts, moans, shouts, and exclamations (e.g. "싼다!", "크윽!!", "솨악", "하아", etc.).
+3. Monologue, thought, and narrative caption boxes.
+
+Translate all text accurately and naturally into ${targetLang}.
+Keep dialogue punchy, expressive, and formatted in natural comic style UPPERCASE.
+
+Return STRICTLY a JSON object with this exact structure:
 {
   "bubbles": [
     {
       "box_2d": [ymin, xmin, ymax, xmax],
       "raw_text": "<original foreign text>",
       "translated_text": "<NATURAL TRANSLATION IN UPPERCASE>",
-      "background": "white" | "dark" | "transparent"
+      "background": "dark" | "white" | "transparent"
     }
   ]
 }
-CRITICAL: box_2d uses 0-1000 normalized coordinates. Output valid JSON only, no markdown.`;
+CRITICAL RULES:
+- "box_2d" MUST be 4 integer coordinates [ymin, xmin, ymax, xmax] normalized on a 0 to 1000 scale tightly enclosing the speech bubble interior or text boundary.
+- For dark/black bubbles, set "background": "dark". For white/light bubbles, set "background": "white".
+- NEVER return an empty bubbles array if foreign text is visible on the image. Output valid JSON only, no markdown.`;
 
     // 5. Proxy Translation Request to AI Provider
     let result: any;
