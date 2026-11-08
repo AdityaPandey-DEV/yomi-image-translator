@@ -635,14 +635,6 @@ document.addEventListener('DOMContentLoaded', () => {
     keyFormError.textContent = msg;
     keyFormError.style.display = 'block';
   }
-    });
-  }
-
-  function showKeyError(msg) {
-    if (!keyFormError) return;
-    keyFormError.textContent = msg;
-    keyFormError.style.display = 'block';
-  }
 
   // ============================================================
   // 5. Settings: Auto-Translate & Target Language (Database Synced)
