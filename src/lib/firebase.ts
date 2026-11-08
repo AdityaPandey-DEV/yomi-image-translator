@@ -137,6 +137,7 @@ export interface UserProfile {
 }
 
 export interface StoredApiKey {
+  id: string; // Firestore document ID — unique per key
   provider: string;
   apiKey: string; // encrypted in production, plaintext for V1 MVP
   model: string;
@@ -179,9 +180,11 @@ export async function updateUserMode(uid: string, mode: 'private' | 'shared') {
   await updateDoc(doc(db, 'users', uid), { mode });
 }
 
-/** Save an API key for a provider */
+/** Save an API key for a provider (supports multiple keys per provider) */
 export async function saveApiKey(uid: string, provider: string, apiKey: string, model: string, isShared: boolean = false) {
-  const ref = doc(db, 'users', uid, 'keys', provider);
+  // Use a unique document ID so multiple keys per provider are supported
+  const keyId = `${provider}_${Date.now()}`;
+  const ref = doc(db, 'users', uid, 'keys', keyId);
   await setDoc(ref, {
     provider,
     apiKey,
@@ -191,11 +194,11 @@ export async function saveApiKey(uid: string, provider: string, apiKey: string, 
     addedAt: serverTimestamp(),
     lastUsedAt: null,
     usageCount: 0,
-  } satisfies Omit<StoredApiKey, 'addedAt' | 'lastUsedAt'> & { addedAt: any; lastUsedAt: any });
+  } satisfies Omit<StoredApiKey, 'id' | 'addedAt' | 'lastUsedAt'> & { addedAt: any; lastUsedAt: any });
 
   // If shared, also add to the shared_keys pool
   if (isShared) {
-    await setDoc(doc(db, 'shared_keys', `${uid}_${provider}`), {
+    await setDoc(doc(db, 'shared_keys', keyId), {
       provider,
       apiKey,
       model,
@@ -210,15 +213,15 @@ export async function saveApiKey(uid: string, provider: string, apiKey: string, 
 /** Get all API keys for a user */
 export async function getUserApiKeys(uid: string): Promise<StoredApiKey[]> {
   const snap = await getDocs(collection(db, 'users', uid, 'keys'));
-  return snap.docs.map(d => d.data() as StoredApiKey);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as StoredApiKey));
 }
 
-/** Delete an API key */
-export async function deleteApiKey(uid: string, provider: string) {
-  await deleteDoc(doc(db, 'users', uid, 'keys', provider));
+/** Delete an API key by its document ID */
+export async function deleteApiKey(uid: string, keyId: string) {
+  await deleteDoc(doc(db, 'users', uid, 'keys', keyId));
   // Also remove from shared pool if it was shared
   try {
-    await deleteDoc(doc(db, 'shared_keys', `${uid}_${provider}`));
+    await deleteDoc(doc(db, 'shared_keys', keyId));
   } catch (_) {
     // Ignore if shared key doesn't exist
   }

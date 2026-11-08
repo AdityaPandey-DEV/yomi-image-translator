@@ -168,7 +168,7 @@ export function Dashboard() {
   }, [selectedProvider, keyInput]);
 
   // Delete key state
-  const [deletingProvider, setDeletingProvider] = useState<string | null>(null);
+  const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
 
   // Extension sync state
   const [extensionStatus, setExtensionStatus] = useState<'idle' | 'syncing' | 'connected' | 'failed'>('idle');
@@ -235,16 +235,16 @@ export function Dashboard() {
     }
   };
 
-  const handleDeleteKey = async (provider: string) => {
+  const handleDeleteKey = async (keyId: string) => {
     if (!user) return;
-    setDeletingProvider(provider);
+    setDeletingKeyId(keyId);
     try {
-      await deleteApiKey(user.uid, provider);
+      await deleteApiKey(user.uid, keyId);
       await refreshKeys();
     } catch (err) {
       console.error('Failed to delete key:', err);
     } finally {
-      setDeletingProvider(null);
+      setDeletingKeyId(null);
     }
   };
 
@@ -481,10 +481,10 @@ export function Dashboard() {
             <div className="mb-5 space-y-3">
               {apiKeys.map((key) => (
                 <KeyRow
-                  key={key.provider}
+                  key={key.id}
                   storedKey={key}
-                  deleting={deletingProvider === key.provider}
-                  onDelete={() => handleDeleteKey(key.provider)}
+                  deleting={deletingKeyId === key.id}
+                  onDelete={() => handleDeleteKey(key.id)}
                 />
               ))}
             </div>

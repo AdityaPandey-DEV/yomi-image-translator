@@ -30,7 +30,7 @@ async function handler(req: any, res: any) {
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
     const url = new URL(req.url);
     const body = ['POST', 'PUT'].includes(method) ? await req.json().catch(() => ({})) : {};
-    const provider = url.searchParams.get('provider') || undefined;
+    const provider = url.searchParams.get('provider') || url.searchParams.get('keyId') || undefined;
     const { status, data } = await handleRequest(method, authHeader, body, provider);
     return new Response(JSON.stringify(data), {
       status,
@@ -49,7 +49,7 @@ async function handler(req: any, res: any) {
 
   const authHeader = req.headers.authorization || req.headers.Authorization || null;
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-  const provider = req.query?.provider || undefined;
+  const provider = req.query?.provider || req.query?.keyId || undefined;
 
   const { status, data } = await handleRequest(req.method, authHeader, body, provider);
   return res.status(status).json(data);
@@ -168,7 +168,7 @@ async function handleGet(
     headers: { Authorization: `Bearer ${idToken}` },
   });
 
-  const keys: Array<{ provider: string; model: string; maskedKey: string; isShared: boolean }> = [];
+  const keys: Array<{ id: string; provider: string; model: string; maskedKey: string; isShared: boolean }> = [];
 
   if (keysRes.ok) {
     const keysJson = await keysRes.json();
@@ -176,7 +176,11 @@ async function handleGet(
       for (const doc of keysJson.documents) {
         const data = parseFirestoreFields(doc.fields);
         if (data.apiKey) {
+          // Extract document ID from the full resource name
+          const docName: string = doc.name || '';
+          const docId = docName.split('/').pop() || data.provider || 'unknown';
           keys.push({
+            id: docId,
             provider: data.provider || 'google',
             model: data.model || '',
             maskedKey: maskApiKey(data.apiKey),
@@ -267,8 +271,9 @@ async function handlePost(
     usageCount: { integerValue: '0' },
   };
 
-  // Write to user's keys subcollection
-  const keyUrl = `${FIRESTORE_BASE}/users/${uid}/keys/${provider}`;
+  // Write to user's keys subcollection (unique ID per key — supports multiple keys per provider)
+  const keyId = `${provider}_${Date.now()}`;
+  const keyUrl = `${FIRESTORE_BASE}/users/${uid}/keys/${keyId}`;
   const keyRes = await fetch(keyUrl, {
     method: 'PATCH',
     headers: {
@@ -290,7 +295,7 @@ async function handlePost(
       addedBy: { stringValue: uid },
     };
 
-    const sharedUrl = `${FIRESTORE_BASE}/shared_keys/${uid}_${provider}`;
+    const sharedUrl = `${FIRESTORE_BASE}/shared_keys/${keyId}`;
     const sharedRes = await fetch(sharedUrl, {
       method: 'PATCH',
       headers: {
@@ -309,20 +314,22 @@ async function handlePost(
 }
 
 // ============================================================
-// DELETE — Delete API key
+// DELETE — Delete API key by keyId (unique document ID)
 // ============================================================
 
 async function handleDelete(
   uid: string,
   idToken: string,
-  provider?: string
+  queryProvider?: string
 ): Promise<{ status: number; data: any }> {
-  if (!provider) {
-    return { status: 400, data: { error: 'Missing required query parameter: provider.' } };
+  // Accept either ?keyId= (new) or ?provider= (legacy fallback)
+  const keyId = queryProvider; // Reuse the query param slot — callers now pass keyId here
+  if (!keyId) {
+    return { status: 400, data: { error: 'Missing required query parameter: keyId (or provider).' } };
   }
 
-  // Delete from user's keys subcollection
-  const keyUrl = `${FIRESTORE_BASE}/users/${uid}/keys/${provider}`;
+  // Delete from user's keys subcollection by document ID
+  const keyUrl = `${FIRESTORE_BASE}/users/${uid}/keys/${keyId}`;
   const deleteRes = await fetch(keyUrl, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${idToken}` },
@@ -335,7 +342,7 @@ async function handleDelete(
 
   // Also try to delete from shared_keys (ignore errors)
   try {
-    const sharedUrl = `${FIRESTORE_BASE}/shared_keys/${uid}_${provider}`;
+    const sharedUrl = `${FIRESTORE_BASE}/shared_keys/${keyId}`;
     await fetch(sharedUrl, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${idToken}` },

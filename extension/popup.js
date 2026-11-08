@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .map(k => {
         const provInfo = PROVIDERS[k.provider] || { name: k.provider, icon: '🔑' };
         return `
-          <div class="key-item" data-provider="${k.provider}">
+          <div class="key-item" data-key-id="${k.id}">
             <div class="key-icon">${provInfo.icon}</div>
             <div class="key-info">
               <div class="key-provider">${provInfo.name}</div>
@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span>${k.model || 'auto'}</span>
               </div>
             </div>
-            <button class="key-delete-btn" data-provider="${k.provider}" title="Delete Key">
+            <button class="key-delete-btn" data-key-id="${k.id}" title="Delete Key">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -333,14 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
     keysList.querySelectorAll('.key-delete-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        const provider = btn.getAttribute('data-provider');
-        if (!provider || !currentToken) return;
+        const keyId = btn.getAttribute('data-key-id');
+        if (!keyId || !currentToken) return;
 
         btn.disabled = true;
         btn.innerHTML = `<div class="spinner-sm" style="width:10px;height:10px;"></div>`;
 
         try {
-          const res = await fetch(`${BASE_URL}/api/user?provider=${encodeURIComponent(provider)}`, {
+          const res = await fetch(`${BASE_URL}/api/user?provider=${encodeURIComponent(keyId)}`, {
             method: 'DELETE',
             headers: {
               Authorization: `Bearer ${currentToken}`,
