@@ -298,7 +298,16 @@ export function Dashboard() {
     // Ping content script to test extension presence
     window.postMessage({ type: 'MMT_CHECK_EXTENSION' }, window.location.origin);
 
-    return () => window.removeEventListener('message', handleWindowMsg);
+    const handleExtensionSignOut = () => {
+      console.log('[Dashboard] Received sign-out trigger from Chrome Extension');
+      signOutUser().catch(console.error);
+    };
+    window.addEventListener('mmt-extension-signout', handleExtensionSignOut);
+
+    return () => {
+      window.removeEventListener('message', handleWindowMsg);
+      window.removeEventListener('mmt-extension-signout', handleExtensionSignOut);
+    };
   }, [user, profile?.mode, profile?.displayName]);
 
   const handleSyncExtension = async () => {

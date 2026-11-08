@@ -64,12 +64,16 @@ async function handleTranslateRequest(
     const firebaseApiKey =
       process.env.VITE_FIREBASE_API_KEY ||
       process.env.FIREBASE_API_KEY ||
-      'AIzaSyBwW1-xZ_yYeYsC-VjwO4PCNL3sQKvPdp8';
+      '';
 
     const projectId =
       process.env.VITE_FIREBASE_PROJECT_ID ||
       process.env.FIREBASE_PROJECT_ID ||
-      'sample-firebase-ai-app-fec3e';
+      '';
+
+    if (!firebaseApiKey || !projectId) {
+      return { status: 500, data: { error: 'Server configuration error: Firebase environment variables are missing.' } };
+    }
 
     // 1. Verify Firebase ID Token using Google Identity Toolkit REST API
     let uid: string;

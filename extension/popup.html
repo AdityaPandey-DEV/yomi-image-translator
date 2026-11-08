@@ -16,6 +16,7 @@
       --primary-glow: rgba(249, 115, 22, 0.25);
       --success: #22c55e;
       --success-glow: rgba(34, 197, 94, 0.2);
+      --danger: #ef4444;
       --text: #fafafa;
       --muted: #a1a1aa;
       --dim: #71717a;
@@ -24,107 +25,68 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      width: 360px;
-      padding: 16px;
+      width: 380px;
+      max-height: 580px;
+      overflow-y: auto;
+      padding: 14px;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
       font-size: 13px;
       user-select: none;
       -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
       position: relative;
     }
 
-    /* Ambient background glow */
     body::before {
       content: "";
       position: absolute;
-      top: 0;
-      left: 50%;
+      top: 0; left: 50%;
       transform: translateX(-50%);
-      width: 280px;
-      height: 120px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(249, 115, 22, 0.12) 0%, rgba(168, 85, 247, 0.04) 50%, transparent 80%);
-      pointer-events: none;
-      z-index: 0;
+      width: 280px; height: 120px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.12) 0%, rgba(168,85,247,0.04) 50%, transparent 80%);
+      pointer-events: none; z-index: 0;
     }
 
-    .container {
-      position: relative;
-      z-index: 1;
-    }
+    .container { position: relative; z-index: 1; }
+
+    /* Scrollbar */
+    body::-webkit-scrollbar { width: 4px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
 
     /* Header */
     .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px; padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; }
     .logo {
-      width: 32px;
-      height: 32px;
+      width: 30px; height: 30px;
       background: linear-gradient(135deg, #f97316, #ea580c);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px var(--primary-glow);
-      flex-shrink: 0;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 12px var(--primary-glow); flex-shrink: 0;
     }
-    .logo svg { width: 18px; height: 18px; fill: #fff; }
-    .title-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .title {
-      font-weight: 700;
-      font-size: 13.5px;
-      color: #fff;
-      letter-spacing: -0.01em;
-    }
+    .logo svg { width: 16px; height: 16px; fill: #fff; }
+    .title-row { display: flex; align-items: center; gap: 5px; }
+    .title { font-weight: 700; font-size: 13px; color: #fff; }
     .version-pill {
-      font-size: 10px;
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      color: #fb923c;
-      background: rgba(249, 115, 22, 0.12);
-      border: 1px solid rgba(249, 115, 22, 0.25);
-      padding: 1px 5px;
-      border-radius: 4px;
+      font-size: 9px; font-family: ui-monospace, monospace;
+      color: #fb923c; background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.25);
+      padding: 1px 5px; border-radius: 4px;
     }
-    .sub {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 1px;
-    }
+    .sub { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
 
     .status-badge-header {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10.5px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.25);
-      color: #4ade80;
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80;
     }
     .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--success); box-shadow: 0 0 6px rgba(34,197,94,0.8);
       animation: pulse-dot 2s infinite ease-in-out;
     }
     @keyframes pulse-dot {
@@ -135,372 +97,245 @@
     /* Views */
     #signed-out-view, #signed-in-view { display: none; }
 
+    /* Section Header */
+    .section-header {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+      margin: 10px 0 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .section-header svg { width: 13px; height: 13px; }
+
     /* Bento Card */
     .bento-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px; margin-bottom: 8px;
       transition: border-color 0.15s ease;
     }
-    .bento-card:hover {
-      border-color: #3f3f46;
-    }
+    .bento-card:hover { border-color: #3f3f46; }
 
     /* Signed Out View */
     .hero-icon {
-      width: 48px;
-      height: 48px;
-      margin: 4px auto 12px;
-      background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.05));
-      border: 1px solid rgba(249, 115, 22, 0.3);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 4px 16px var(--primary-glow);
+      width: 44px; height: 44px; margin: 2px auto 10px;
+      background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(234,88,12,0.05));
+      border: 1px solid rgba(249,115,22,0.3); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: 0 4px 14px var(--primary-glow);
     }
-    .hero-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #fff;
-      text-align: center;
-      margin-bottom: 4px;
-    }
-    .hero-desc {
-      font-size: 11.5px;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.45;
-      margin-bottom: 14px;
-    }
-
-    /* Feature pills in Bento layout */
-    .feature-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 14px;
-    }
+    .hero-title { font-size: 13.5px; font-weight: 700; color: #fff; text-align: center; margin-bottom: 4px; }
+    .hero-desc { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.45; margin-bottom: 12px; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 12px; }
     .feature-pill {
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      padding: 6px 8px;
-      border-radius: 8px;
-      font-size: 10.5px;
-      color: #d4d4d8;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      background: var(--input-bg); border: 1px solid var(--border);
+      padding: 5px 7px; border-radius: 7px; font-size: 10px; color: #d4d4d8;
+      display: flex; align-items: center; gap: 5px;
     }
 
     .btn-primary {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      background: linear-gradient(135deg, #f97316, #ea580c);
-      color: #fff;
-      font-weight: 600;
-      font-size: 12.5px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 16px var(--primary-glow);
-      transition: all 0.15s ease;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #fff; font-weight: 600; font-size: 12px; padding: 9px 12px;
+      border-radius: 9px; border: none; cursor: pointer;
+      box-shadow: 0 4px 14px var(--primary-glow); transition: all 0.15s ease;
       text-decoration: none;
     }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
-    }
-    .btn-primary:active {
-      transform: translateY(0);
-    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(249,115,22,0.35); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
     .sync-status-hint {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--dim);
-      margin-top: 10px;
-      text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-size: 10.5px; color: var(--dim); margin-top: 8px; text-align: center;
     }
     .spinner-sm {
-      width: 12px;
-      height: 12px;
-      border: 2px solid #3f3f46;
-      border-top-color: var(--primary);
-      border-radius: 50%;
+      width: 11px; height: 11px; border: 2px solid #3f3f46;
+      border-top-color: var(--primary); border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Signed In View */
+    /* User Card */
     .user-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 12px; margin-bottom: 8px;
     }
     .user-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #27272a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--primary);
-      overflow: hidden;
-      flex-shrink: 0;
-      border: 2px solid #3f3f46;
+      width: 36px; height: 36px; border-radius: 50%; background: #27272a;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: var(--primary);
+      overflow: hidden; flex-shrink: 0; border: 2px solid #3f3f46;
     }
     .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .user-details { flex: 1; min-width: 0; }
-    .user-name {
-      font-weight: 600;
-      font-size: 13px;
-      color: #fff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .user-email {
-      font-size: 11px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 1px;
-    }
+    .user-name { font-weight: 600; font-size: 12.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-email { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
     .mode-pill {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 12px;
-      white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+      font-size: 9.5px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 3px;
     }
-    .mode-private {
-      background: rgba(249, 115, 22, 0.12);
-      color: #fb923c;
-      border: 1px solid rgba(249, 115, 22, 0.25);
-    }
-    .mode-shared {
-      background: rgba(34, 197, 94, 0.12);
-      color: #4ade80;
-      border: 1px solid rgba(34, 197, 94, 0.25);
-    }
+    .mode-private { background: rgba(249,115,22,0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+    .mode-shared { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
 
-    /* Live Engine Bento Row */
-    .bento-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 12px;
+    /* Translation Mode Cards */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .mode-card {
+      background: var(--card); border: 2px solid var(--border);
+      border-radius: 10px; padding: 10px; cursor: pointer;
+      transition: all 0.15s ease; position: relative;
     }
-    .bento-metric {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
+    .mode-card:hover { border-color: #3f3f46; background: var(--card-hover); }
+    .mode-card.active { border-color: var(--primary); background: rgba(249,115,22,0.04); }
+    .mode-card.active .mode-check { display: flex; }
+    .mode-check {
+      display: none; position: absolute; top: 6px; right: 6px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--primary); align-items: center; justify-content: center;
     }
-    .bento-metric-label {
-      font-size: 10.5px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-bottom: 4px;
-    }
-    .bento-metric-value {
-      font-size: 12px;
-      font-weight: 600;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
+    .mode-check svg { width: 10px; height: 10px; fill: #fff; }
+    .mode-card-icon { font-size: 18px; margin-bottom: 4px; }
+    .mode-card-title { font-size: 11.5px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .mode-card-desc { font-size: 10px; color: var(--dim); line-height: 1.35; }
 
-    /* Settings Bento Box */
+    /* API Key Vault */
+    .key-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+    }
+    .key-item:last-child { border-bottom: none; }
+    .key-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--input-bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+    .key-info { flex: 1; min-width: 0; }
+    .key-provider { font-size: 11.5px; font-weight: 600; color: #e4e4e7; }
+    .key-meta { font-size: 10px; color: var(--dim); display: flex; align-items: center; gap: 4px; margin-top: 1px; }
+    .key-masked { font-family: ui-monospace, monospace; }
+    .key-delete-btn {
+      width: 26px; height: 26px; border-radius: 6px;
+      background: transparent; border: 1px solid transparent;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--dim); transition: all 0.15s;
+    }
+    .key-delete-btn:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--danger); }
+
+    .btn-add-key {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 10px; border-radius: 8px; border: 1px dashed var(--border);
+      background: transparent; color: var(--muted); font-size: 11px; font-weight: 500;
+      cursor: pointer; width: 100%; transition: all 0.15s; margin-top: 6px;
+    }
+    .btn-add-key:hover { border-color: var(--primary); color: var(--primary); background: rgba(249,115,22,0.04); }
+
+    /* Add Key Form */
+    .add-key-form { display: none; margin-top: 8px; }
+    .add-key-form.visible { display: block; }
+    .form-row { margin-bottom: 8px; }
+    .form-label { font-size: 10.5px; font-weight: 600; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+    select, input[type="text"], input[type="password"] {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+      color: #f4f4f5; padding: 7px 10px; border-radius: 8px;
+      font-size: 11.5px; font-weight: 500; outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input:focus { border-color: var(--primary); }
+    select { cursor: pointer; appearance: none; }
+    input::placeholder { color: #52525b; }
+
+    .form-link {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; color: var(--primary); text-decoration: none;
+      margin-top: 3px;
+    }
+    .form-link:hover { text-decoration: underline; }
+    .form-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .btn-save {
+      flex: 1; padding: 7px; border-radius: 8px; border: none;
+      background: var(--primary); color: #fff; font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-save:hover { background: var(--primary-hover); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel {
+      padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 11px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-cancel:hover { border-color: #3f3f46; color: #fff; }
+    .form-error { font-size: 10px; color: var(--danger); margin-top: 4px; }
+
+    /* Settings */
     .settings-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px; margin-bottom: 8px;
     }
     .field-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
     }
     .field-row:last-child { margin-bottom: 0; }
-    .field-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: #e4e4e7;
-    }
-    .field-desc {
-      font-size: 10.5px;
-      color: var(--dim);
-      margin-top: 1px;
-    }
-
-    /* Custom Select */
-    .select-wrapper {
-      position: relative;
-      width: 100%;
-      margin-top: 6px;
-    }
-    select {
-      width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      color: #f4f4f5;
-      padding: 8px 12px;
-      border-radius: 9px;
-      font-size: 12px;
-      font-weight: 500;
-      outline: none;
-      cursor: pointer;
-      appearance: none;
-      transition: border-color 0.15s ease;
-    }
-    select:focus {
-      border-color: var(--primary);
-    }
+    .field-title { font-size: 11.5px; font-weight: 600; color: #e4e4e7; }
+    .field-desc { font-size: 10px; color: var(--dim); margin-top: 1px; }
+    .select-wrapper { position: relative; width: 100%; margin-top: 4px; }
     .select-chevron {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      color: var(--muted);
-      width: 12px;
-      height: 12px;
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      pointer-events: none; color: var(--muted); width: 11px; height: 11px;
     }
 
-    /* iOS-Style Toggle Switch */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 38px;
-      height: 22px;
-      flex-shrink: 0;
-    }
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #27272a;
-      border-radius: 22px;
-      transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: absolute; cursor: pointer; inset: 0;
+      background: #27272a; border-radius: 20px; transition: 0.2s cubic-bezier(0.4,0,0.2,1);
     }
     .slider::before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      position: absolute; content: ""; height: 14px; width: 14px;
+      left: 3px; bottom: 3px; background: white; border-radius: 50%;
+      transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
-    input:checked + .slider {
-      background: var(--primary);
-    }
-    input:checked + .slider::before {
-      transform: translateX(16px);
-    }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider::before { transform: translateX(16px); }
 
-    /* Secondary Buttons */
+    /* Bottom Buttons */
     .btn-secondary {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      width: 100%;
-      background: #18181b;
-      border: 1px solid var(--border);
-      color: #e4e4e7;
-      font-weight: 600;
-      font-size: 12px;
-      padding: 9px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.15s ease;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; background: #18181b; border: 1px solid var(--border);
+      color: #e4e4e7; font-weight: 600; font-size: 11.5px; padding: 8px 10px;
+      border-radius: 9px; cursor: pointer; transition: all 0.15s; text-decoration: none;
     }
-    .btn-secondary:hover {
-      background: #27272a;
-      border-color: #3f3f46;
-      color: #fff;
-    }
+    .btn-secondary:hover { background: #27272a; border-color: #3f3f46; color: #fff; }
 
     .btn-signout {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      background: transparent;
-      border: none;
-      color: var(--dim);
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      margin-top: 10px;
-      padding: 6px;
-      transition: color 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      width: 100%; background: transparent; border: none;
+      color: var(--dim); font-size: 10.5px; font-weight: 500;
+      cursor: pointer; margin-top: 8px; padding: 5px; transition: color 0.15s;
     }
-    .btn-signout:hover {
-      color: #ef4444;
+    .btn-signout:hover { color: #ef4444; }
+
+    /* Loading overlay */
+    .loading-overlay {
+      display: none; position: absolute; inset: 0; z-index: 10;
+      background: rgba(9,9,11,0.85); align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px; border-radius: 12px;
     }
+    .loading-overlay.visible { display: flex; }
+    .loading-overlay .spinner-sm { width: 18px; height: 18px; }
+    .loading-overlay span { font-size: 11px; color: var(--muted); }
 
     /* Footer */
     .footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-top: 12px;
-      font-size: 11px;
-      color: var(--dim);
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin-top: 10px; font-size: 10.5px; color: var(--dim);
     }
-    .footer a {
-      color: var(--dim);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .footer a:hover {
-      color: var(--text);
-    }
-    .footer-hint {
-      text-align: center;
-      font-size: 10.5px;
-      color: #52525b;
-      margin-top: 6px;
-    }
+    .footer a { color: var(--dim); text-decoration: none; transition: color 0.15s; }
+    .footer a:hover { color: var(--text); }
+    .footer-hint { text-align: center; font-size: 10px; color: #52525b; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -509,14 +344,12 @@
     <header class="header">
       <div class="brand">
         <div class="logo">
-          <svg viewBox="0 0 24 24">
-            <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
-          </svg>
+          <svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
         </div>
         <div>
           <div class="title-row">
             <span class="title">Manga Translator</span>
-            <span class="version-pill">v1.1</span>
+            <span class="version-pill">v2.0</span>
           </div>
           <div class="sub">Multimodal Cloud AI</div>
         </div>
@@ -527,139 +360,164 @@
       </div>
     </header>
 
-    <!-- ======================================================== -->
-    <!-- SIGNED OUT VIEW                                          -->
-    <!-- ======================================================== -->
+    <!-- ======== SIGNED OUT VIEW ======== -->
     <div id="signed-out-view">
       <div class="bento-card" style="text-align: center;">
         <div class="hero-icon">🔐</div>
         <h3 class="hero-title">Zero-Knowledge Cloud Login</h3>
         <p class="hero-desc">
-          Sign in via our web portal to link your account. API keys are safely isolated in your personal cloud vault and never stored in plain-text on your device.
+          Sign in via our web portal to link your account. API keys are safely isolated in your personal cloud vault.
         </p>
-
         <div class="feature-grid">
-          <div class="feature-pill">
-            <span>🛡️</span> <span>Encrypted BYOK</span>
-          </div>
-          <div class="feature-pill">
-            <span>⚡</span> <span>Multi-Model AI</span>
-          </div>
-          <div class="feature-pill">
-            <span>🌐</span> <span>Community Pool</span>
-          </div>
-          <div class="feature-pill">
-            <span>💬</span> <span>In-Place Bubbles</span>
-          </div>
+          <div class="feature-pill"><span>🛡️</span> <span>Encrypted BYOK</span></div>
+          <div class="feature-pill"><span>⚡</span> <span>Multi-Model AI</span></div>
+          <div class="feature-pill"><span>🌐</span> <span>Community Pool</span></div>
+          <div class="feature-pill"><span>💬</span> <span>In-Place Bubbles</span></div>
         </div>
-
         <button id="signin-action-btn" class="btn-primary">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
           Connect via manga-manhwa-translator
         </button>
-
         <div id="sync-detection-status" class="sync-status-hint">
           <div class="spinner-sm"></div>
-          <span>Checking for active website session…</span>
+          <span>Checking for active session…</span>
         </div>
       </div>
     </div>
 
-    <!-- ======================================================== -->
-    <!-- SIGNED IN VIEW                                           -->
-    <!-- ======================================================== -->
+    <!-- ======== SIGNED IN VIEW ======== -->
     <div id="signed-in-view">
-      <!-- Profile Bento Card -->
+      <!-- Profile Card -->
       <div class="user-card">
-        <div class="user-avatar" id="user-avatar-container">
-          <span id="user-initials">U</span>
-        </div>
+        <div class="user-avatar" id="user-avatar-container"><span>U</span></div>
         <div class="user-details">
           <div class="user-name" id="user-name">User</div>
           <div class="user-email" id="user-email">user@email.com</div>
         </div>
-        <span id="mode-badge" class="mode-pill mode-private">Private</span>
+        <span id="mode-badge" class="mode-pill mode-private">Private Vault</span>
       </div>
 
-      <!-- Bento Row: Vault Status & Engine -->
-      <div class="bento-row">
-        <div class="bento-metric">
-          <div class="bento-metric-label">Vault Status</div>
-          <div class="bento-metric-value" style="color:#4ade80;">
-            <span class="status-dot"></span>
-            <span>Connected</span>
-          </div>
+      <!-- Translation Mode -->
+      <div class="section-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Translation Mode
+      </div>
+      <div class="mode-grid">
+        <div class="mode-card active" id="mode-private-card" data-mode="private">
+          <div class="mode-check"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+          <div class="mode-card-icon">🔒</div>
+          <div class="mode-card-title">Private Mode</div>
+          <div class="mode-card-desc">Your own API keys. Your credits, your usage.</div>
         </div>
-        <div class="bento-metric">
-          <div class="bento-metric-label">AI Engine</div>
-          <div class="bento-metric-value" style="color:#fb923c;">
-            <span>⚡ Multi-Provider</span>
+        <div class="mode-card" id="mode-shared-card" data-mode="shared">
+          <div class="mode-check"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+          <div class="mode-card-icon">🤝</div>
+          <div class="mode-card-title">Shared Mode</div>
+          <div class="mode-card-desc">Contribute a key to the community pool.</div>
+        </div>
+      </div>
+
+      <!-- API Key Vault -->
+      <div class="section-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        API Key Vault
+      </div>
+      <div class="bento-card" style="position: relative;">
+        <div class="loading-overlay" id="keys-loading">
+          <div class="spinner-sm"></div>
+          <span>Loading keys…</span>
+        </div>
+        <div id="keys-list">
+          <div style="text-align:center; padding:8px; color:var(--dim); font-size:11px;">No API keys yet</div>
+        </div>
+        <button id="btn-add-key" class="btn-add-key">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add New Key
+        </button>
+
+        <!-- Add Key Form (hidden by default) -->
+        <div id="add-key-form" class="add-key-form">
+          <div class="form-row">
+            <div class="form-label">Provider</div>
+            <select id="key-provider">
+              <option value="google">Google Gemini</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="groq">Groq</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-label">API Key</div>
+            <input type="password" id="key-input" placeholder="AIzaSy..." autocomplete="off">
+            <a id="key-get-link" class="form-link" href="https://aistudio.google.com/app/apikey" target="_blank">
+              Get Free Key from Google AI Studio ↗
+            </a>
+          </div>
+          <div class="form-row">
+            <div class="form-label">Model</div>
+            <input type="text" id="key-model" placeholder="gemini-2.5-flash" value="gemini-2.5-flash">
+          </div>
+          <div id="key-form-error" class="form-error" style="display:none;"></div>
+          <div class="form-actions">
+            <button id="btn-save-key" class="btn-save">Save Key</button>
+            <button id="btn-cancel-key" class="btn-cancel">Cancel</button>
           </div>
         </div>
       </div>
 
-      <!-- Settings Bento Box -->
+      <!-- Settings -->
+      <div class="section-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
       <div class="settings-card">
-        <!-- Auto Translate Toggle -->
         <div class="field-row">
           <div>
             <div class="field-title">Auto-Translate on Scroll</div>
-            <div class="field-desc">Instantly translate manga panels as you read</div>
+            <div class="field-desc">Translate manga panels as you read</div>
           </div>
           <label class="switch">
             <input type="checkbox" id="auto-translate-toggle">
             <span class="slider"></span>
           </label>
         </div>
-
-        <!-- Target Language Selector -->
-        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+        <div style="padding-top: 8px; border-top: 1px solid var(--border);">
           <div class="field-title">Target Language</div>
-          <div class="select-wrapper">
+          <div class="select-wrapper" style="margin-top:4px;">
             <select id="target-lang">
               <option value="en" selected>🇺🇸 English</option>
-              <option value="es">🇪🇸 Spanish (Español)</option>
-              <option value="fr">🇫🇷 French (Français)</option>
-              <option value="de">🇩🇪 German (Deutsch)</option>
-              <option value="pt">🇧🇷 Portuguese (Português)</option>
-              <option value="it">🇮🇹 Italian (Italiano)</option>
-              <option value="ru">🇷🇺 Russian (Русский)</option>
-              <option value="zh">🇨🇳 Chinese (中文)</option>
-              <option value="ja">🇯🇵 Japanese (日本語)</option>
-              <option value="ko">🇰🇷 Korean (한국어)</option>
-              <option value="id">🇮🇩 Indonesian (Bahasa)</option>
-              <option value="vi">🇻🇳 Vietnamese (Tiếng Việt)</option>
-              <option value="th">🇹🇭 Thai (ไทย)</option>
-              <option value="hi">🇮🇳 Hindi (हिन्दी)</option>
-              <option value="ar">🇸🇦 Arabic (العربية)</option>
+              <option value="es">🇪🇸 Spanish</option>
+              <option value="fr">🇫🇷 French</option>
+              <option value="de">🇩🇪 German</option>
+              <option value="pt">🇧🇷 Portuguese</option>
+              <option value="it">🇮🇹 Italian</option>
+              <option value="ru">🇷🇺 Russian</option>
+              <option value="zh">🇨🇳 Chinese</option>
+              <option value="ja">🇯🇵 Japanese</option>
+              <option value="ko">🇰🇷 Korean</option>
+              <option value="id">🇮🇩 Indonesian</option>
+              <option value="vi">🇻🇳 Vietnamese</option>
+              <option value="th">🇹🇭 Thai</option>
+              <option value="hi">🇮🇳 Hindi</option>
+              <option value="ar">🇸🇦 Arabic</option>
             </select>
-            <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+            <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
         </div>
       </div>
 
-      <!-- Open Cloud Dashboard Button -->
+      <!-- Dashboard Link -->
       <button id="open-dashboard-btn" class="btn-secondary">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="3" y1="9" x2="21" y2="9"></line>
-          <line x1="9" y1="21" x2="9" y2="9"></line>
-        </svg>
-        <span>Manage Cloud Vault & API Keys</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        Open Full Dashboard
       </button>
 
       <!-- Sign Out -->
       <button id="signout-btn" class="btn-signout">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-        <span>Sign Out Extension</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out (Extension + Website)
       </button>
     </div>
 

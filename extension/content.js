@@ -112,8 +112,17 @@
       }
     });
 
-    // --- Messages from background/popup requesting auth ---
+    // --- Messages from background/popup requesting auth or signout ---
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'FORCE_WEBSITE_SIGNOUT') {
+        window.dispatchEvent(new CustomEvent('mmt-extension-signout'));
+        try {
+          localStorage.removeItem('mmt_auth_session');
+        } catch (_) {}
+        sendResponse({ success: true });
+        return true;
+      }
+
       if (request.action === 'REQUEST_AUTH_FROM_PAGE') {
         const synced = trySyncFromDom();
         if (!synced) {

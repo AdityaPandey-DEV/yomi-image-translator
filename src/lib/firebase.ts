@@ -130,6 +130,8 @@ export interface UserProfile {
   displayName: string;
   photoURL: string;
   mode: 'private' | 'shared'; // private = own key only, shared = contribute to pool
+  autoTranslate?: boolean;
+  targetLang?: string;
   createdAt: any;
   lastLoginAt: any;
 }
@@ -156,6 +158,8 @@ async function ensureUserDocument(user: User) {
       displayName: user.displayName || user.email?.split('@')[0] || 'User',
       photoURL: user.photoURL || '',
       mode: 'private',
+      autoTranslate: false,
+      targetLang: 'en',
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
     } satisfies Omit<UserProfile, 'createdAt' | 'lastLoginAt'> & { createdAt: any; lastLoginAt: any });
