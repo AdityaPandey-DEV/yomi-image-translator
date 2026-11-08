@@ -9,6 +9,7 @@ import {
   signOutUser, saveApiKey, deleteApiKey, updateUserMode,
   getIdToken, sendTokenToExtension, type StoredApiKey
 } from '../lib/firebase';
+import { fetchLiveModels, getStaticCuratedModels, type DynamicModel } from '../services/modelDiscovery';
 
 // ============================================================
 // Provider Configuration
@@ -128,11 +129,43 @@ export function Dashboard() {
   const [selectedProvider, setSelectedProvider] = useState('google');
   const [keyInput, setKeyInput] = useState('');
   const [showKeyInput, setShowKeyInput] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(PROVIDERS.google.models[0].id);
+  const [selectedModel, setSelectedModel] = useState('gemini-3.5-flash');
+  const [dynamicModels, setDynamicModels] = useState<DynamicModel[]>(getStaticCuratedModels('google'));
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLiveModels, setIsLiveModels] = useState(false);
+  const [isCustomModel, setIsCustomModel] = useState(false);
+  const [customModelInput, setCustomModelInput] = useState('');
   const [shareKey, setShareKey] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Dynamic model discovery effect
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      setIsLoadingModels(true);
+      try {
+        const { models, isLive } = await fetchLiveModels(selectedProvider, keyInput);
+        if (active) {
+          setDynamicModels(models);
+          setIsLiveModels(isLive);
+          if (models.length > 0 && !models.some((m) => m.id === selectedModel)) {
+            setSelectedModel(models[0].id);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch dynamic models:', e);
+      } finally {
+        if (active) setIsLoadingModels(false);
+      }
+    }, keyInput ? 600 : 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [selectedProvider, keyInput]);
 
   // Delete key state
   const [deletingProvider, setDeletingProvider] = useState<string | null>(null);
@@ -162,7 +195,11 @@ export function Dashboard() {
 
   const handleProviderChange = (provider: string) => {
     setSelectedProvider(provider);
-    setSelectedModel(PROVIDERS[provider].models[0].id);
+    setIsCustomModel(false);
+    setCustomModelInput('');
+    const staticModels = getStaticCuratedModels(provider);
+    setDynamicModels(staticModels);
+    setSelectedModel(staticModels[0]?.id || '');
     setSaveError(null);
     setSaveSuccess(false);
   };
@@ -173,14 +210,21 @@ export function Dashboard() {
       setSaveError('Please enter an API key.');
       return;
     }
+    const finalModel = isCustomModel ? customModelInput.trim() : selectedModel;
+    if (!finalModel) {
+      setSaveError('Please select or enter a model ID.');
+      return;
+    }
     setSaveLoading(true);
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      await saveApiKey(user.uid, selectedProvider, keyInput.trim(), selectedModel, shareKey);
+      await saveApiKey(user.uid, selectedProvider, keyInput.trim(), finalModel, shareKey);
       await refreshKeys();
       setKeyInput('');
       setShareKey(false);
+      setIsCustomModel(false);
+      setCustomModelInput('');
       setSaveSuccess(true);
       setShowAddForm(false);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -510,22 +554,88 @@ export function Dashboard() {
                 </div>
               </div>
 
-              {/* Model Select */}
+              {/* Dynamic Model Select */}
               <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Model
-                </label>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-orange-500"
-                >
-                  {PROVIDERS[selectedProvider].models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                    Model
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {isLoadingModels ? (
+                      <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+                        <Loader2 className="h-3 w-3 animate-spin text-orange-400" />
+                        Fetching live models...
+                      </span>
+                    ) : isLiveModels ? (
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Live API Verified ({dynamicModels.length} models)
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIsLoadingModels(true);
+                          const { models, isLive } = await fetchLiveModels(selectedProvider, keyInput);
+                          setDynamicModels(models);
+                          setIsLiveModels(isLive);
+                          setIsLoadingModels(false);
+                        }}
+                        className="flex items-center gap-1 text-[11px] text-neutral-400 transition-colors hover:text-orange-400"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Check live models
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {!isCustomModel ? (
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setIsCustomModel(true);
+                        setCustomModelInput('');
+                      } else {
+                        setSelectedModel(e.target.value);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-orange-500"
+                  >
+                    {dynamicModels.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ Enter custom model ID...</option>
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customModelInput}
+                        onChange={(e) => setCustomModelInput(e.target.value)}
+                        placeholder="e.g. gemini-3.5-flash, gpt-4o, claude-sonnet-5.5"
+                        className="flex-1 rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-neutral-600 focus:border-orange-500 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomModel(false);
+                          if (dynamicModels[0]) setSelectedModel(dynamicModels[0].id);
+                        }}
+                        className="rounded-xl border border-neutral-800 px-3 py-2 text-xs text-neutral-400 transition-colors hover:border-neutral-700 hover:text-white"
+                      >
+                        Back to list
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-neutral-500">
+                      You can specify any custom, fine-tuned, or private model ID available to your account.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Get API Key Link */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Key,
@@ -8,9 +8,12 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Check
+  Check,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { BYOKConfig, AIProvider } from '../types';
+import { fetchLiveModels, getStaticCuratedModels, type DynamicModel } from '../services/modelDiscovery';
 
 interface BYOKModalProps {
   isOpen: boolean;
@@ -28,6 +31,44 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
   const [localConfig, setLocalConfig] = useState<BYOKConfig>({ ...config });
   const [showKey, setShowKey] = useState<Record<string, boolean>>({});
   const [savedNotice, setSavedNotice] = useState(false);
+  const [liveModels, setLiveModels] = useState<DynamicModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLiveVerified, setIsLiveVerified] = useState(false);
+
+  const getCurrentKey = (provider: AIProvider): string => {
+    switch (provider) {
+      case 'google': return localConfig.googleApiKey || '';
+      case 'openai': return localConfig.openaiApiKey || '';
+      case 'anthropic': return localConfig.anthropicApiKey || '';
+      case 'openrouter': return localConfig.openrouterApiKey || '';
+      case 'deepseek': return localConfig.deepseekApiKey || '';
+      default: return '';
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const currentKey = getCurrentKey(localConfig.activeProvider);
+    const timer = setTimeout(async () => {
+      setIsLoadingModels(true);
+      try {
+        const { models, isLive } = await fetchLiveModels(localConfig.activeProvider, currentKey);
+        if (active) {
+          setLiveModels(models);
+          setIsLiveVerified(isLive);
+        }
+      } catch (err) {
+        console.warn('Failed to discover models:', err);
+      } finally {
+        if (active) setIsLoadingModels(false);
+      }
+    }, currentKey ? 500 : 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [localConfig.activeProvider, getCurrentKey(localConfig.activeProvider)]);
 
   if (!isOpen) return null;
 
@@ -161,7 +202,24 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-neutral-400 block mb-1">Model Version</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">Model Version</label>
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      {isLoadingModels ? (
+                        <span className="text-neutral-500 flex items-center gap-1">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin text-orange-400" />
+                          Querying live models...
+                        </span>
+                      ) : isLiveVerified ? (
+                        <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          Live Verified ({liveModels.length})
+                        </span>
+                      ) : (
+                        <span className="text-neutral-500">Curated 2026 Models</span>
+                      )}
+                    </div>
+                  </div>
                   <select
                     value={localConfig.googleModel}
                     onChange={e =>
@@ -169,13 +227,11 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended · Fastest Frontier Vision)</option>
-                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (Lowest Latency & Budget)</option>
-                    <option value="gemini-3.1-pro">Gemini 3.1 Pro (Advanced Logic & Hard Dialogue)</option>
-                    <option value="gemini-3.0-pro">Gemini 3.0 Pro (Frontier Multimodal)</option>
-                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Proven High-Speed Stable)</option>
-                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Multimodal Reasoning)</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable Workhorse)</option>
+                    {(liveModels.length > 0 ? liveModels : getStaticCuratedModels('google')).map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -217,7 +273,22 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-neutral-400 block mb-1">Model Version</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-neutral-400">Model Version</label>
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      {isLoadingModels ? (
+                        <span className="text-neutral-500 flex items-center gap-1">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin text-orange-400" />
+                          Loading OpenRouter catalog...
+                        </span>
+                      ) : (
+                        <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          Live Catalog ({liveModels.length > 0 ? liveModels.length : '50+'} models)
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <select
                     value={localConfig.openrouterModel || 'google/gemini-3.5-flash'}
                     onChange={e =>
@@ -225,14 +296,11 @@ export const BYOKModal: React.FC<BYOKModalProps> = ({
                     }
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-orange-500"
                   >
-                    <option value="google/gemini-3.5-flash">Google Gemini 3.5 Flash (Frontier & Fast)</option>
-                    <option value="google/gemini-2.5-flash">Google Gemini 2.5 Flash</option>
-                    <option value="openai/gpt-4o-mini">OpenAI GPT-4o Mini (Budget)</option>
-                    <option value="openai/gpt-4o">OpenAI GPT-4o Flagship</option>
-                    <option value="anthropic/claude-sonnet-5-5">Anthropic Claude Sonnet 5.5</option>
-                    <option value="anthropic/claude-haiku-5-5">Anthropic Claude Haiku 5.5</option>
-                    <option value="deepseek/deepseek-chat">DeepSeek V3</option>
-                    <option value="meta-llama/llama-3.2-11b-vision-instruct">Llama 3.2 11B Vision</option>
+                    {(liveModels.length > 0 ? liveModels : getStaticCuratedModels('openrouter')).map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
