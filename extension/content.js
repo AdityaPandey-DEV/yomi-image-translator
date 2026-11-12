@@ -149,9 +149,10 @@
   let siteEnabled = false; // Whitelist: ALL sites OFF by default
   const currentHostname = window.location.hostname;
   
-  // Rate-limiting queue
+  // Parallel translation worker pool (3 concurrent workers for high-speed parallel reading)
   const translationQueue = [];
-  let isQueueProcessing = false;
+  const MAX_CONCURRENT_TRANSLATIONS = 3;
+  let activeWorkers = 0;
   let isRateLimitedUntil = 0;
 
   // Load extension settings from storage
@@ -182,7 +183,7 @@
   function cleanUpAllYomiElements() {
     // 1. Flush any pending queue
     translationQueue.length = 0;
-    isQueueProcessing = false;
+    activeWorkers = 0;
 
     // 2. Disconnect observers so they don't fire during cleanup
     if (mutationObserver) {
@@ -378,40 +379,36 @@
     processQueue();
   }
 
-  // Process queue 1 image at a time with respectful pacing (2s spacing)
-  async function processQueue() {
-    if (isQueueProcessing) return;
-    if (translationQueue.length === 0) return;
-
-    // If site was disabled while items were queued, flush the queue
+  // High-speed parallel translation pool (up to 3 images concurrently without artificial delays)
+  function processQueue() {
     if (!siteEnabled) {
       translationQueue.length = 0;
+      activeWorkers = 0;
       return;
     }
 
-    // If temporarily rate limited by Gemini, pause queue
+    // If temporarily rate limited by AI provider, wait
     const now = Date.now();
     if (now < isRateLimitedUntil) {
       const waitSeconds = Math.ceil((isRateLimitedUntil - now) / 1000);
-      setTimeout(processQueue, Math.min(waitSeconds * 1000, 5000));
+      setTimeout(processQueue, Math.min(waitSeconds * 1000, 4000));
       return;
     }
 
-    isQueueProcessing = true;
-    const img = translationQueue.shift();
+    // Launch parallel workers up to concurrency limit
+    while (activeWorkers < MAX_CONCURRENT_TRANSLATIONS && translationQueue.length > 0) {
+      const img = translationQueue.shift();
+      if (!img || !document.contains(img)) {
+        continue;
+      }
 
-    if (!img || !document.contains(img)) {
-      isQueueProcessing = false;
-      processQueue();
-      return;
+      activeWorkers++;
+      executeImageTranslation(img).finally(() => {
+        activeWorkers--;
+        // Immediately start next queued image without artificial delay
+        processQueue();
+      });
     }
-
-    await executeImageTranslation(img);
-
-    isQueueProcessing = false;
-
-    // Respectful delay between successive calls to avoid 429 quota exhaustion
-    setTimeout(processQueue, 2000);
   }
 
   async function executeImageTranslation(img) {

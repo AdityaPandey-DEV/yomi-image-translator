@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Manga & Manhwa Image Translator",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Instantly translate raw Japanese, Korean, and Chinese manga, manhwa & webtoons in-place with AI.",
   "permissions": [
     "activeTab",
