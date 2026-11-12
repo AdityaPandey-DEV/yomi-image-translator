@@ -324,10 +324,35 @@ async function callGemini(apiKey: string, model: string, prompt: string, base64:
   let safeMime = (mime || 'image/jpeg').trim();
   if (!safeMime.startsWith('image/')) safeMime = 'image/jpeg';
 
-  const genConfig: any = { responseMimeType: 'application/json' };
-  if (targetModel.includes('2.5') || targetModel.includes('3.') || targetModel.includes('thinking')) {
-    genConfig.thinkingConfig = { thinkingBudget: 0 };
-  }
+  const genConfig: any = {
+    responseMimeType: 'application/json',
+    maxOutputTokens: 4096,
+    temperature: 0.1,
+    responseSchema: {
+      type: 'OBJECT',
+      properties: {
+        bubbles: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              box_2d: {
+                type: 'ARRAY',
+                items: { type: 'INTEGER' },
+                description: '[ymin, xmin, ymax, xmax] coordinates from 0 to 1000',
+              },
+              raw_text: { type: 'STRING' },
+              translated_text: { type: 'STRING' },
+              background: { type: 'STRING', enum: ['white', 'dark', 'transparent'] },
+              type: { type: 'STRING', enum: ['dialogue', 'sfx', 'narration'] },
+            },
+            required: ['box_2d', 'translated_text'],
+          },
+        },
+      },
+      required: ['bubbles'],
+    },
+  };
 
   const makeRequest = async (mName: string, config: any) => {
     return await fetch(
@@ -359,10 +384,10 @@ async function callGemini(apiKey: string, model: string, prompt: string, base64:
   let res = await makeRequest(targetModel, genConfig);
   let json = await res.json();
 
-  // 1. If thinkingConfig or generationConfig causes error, retry with bare config
-  if (!res.ok && (json.error?.message?.includes('thinking') || json.error?.message?.includes('argument') || json.error?.message?.includes('generationConfig'))) {
-    delete genConfig.thinkingConfig;
-    res = await makeRequest(targetModel, genConfig);
+  // 1. If responseSchema or generationConfig causes error, retry with simple JSON config
+  if (!res.ok && (json.error?.message?.includes('schema') || json.error?.message?.includes('argument') || json.error?.message?.includes('generationConfig'))) {
+    const fallbackConfig = { responseMimeType: 'application/json', maxOutputTokens: 4096 };
+    res = await makeRequest(targetModel, fallbackConfig);
     json = await res.json();
   }
 
@@ -370,8 +395,8 @@ async function callGemini(apiKey: string, model: string, prompt: string, base64:
   if (!res.ok && (res.status === 404 || json.error?.code === 404)) {
     console.warn(`[Gemini Proxy] Model ${targetModel} returned 404, falling back to gemini-2.5-flash`);
     targetModel = 'gemini-2.5-flash';
-    delete genConfig.thinkingConfig;
-    res = await makeRequest(targetModel, genConfig);
+    const fallbackConfig = { responseMimeType: 'application/json', maxOutputTokens: 4096 };
+    res = await makeRequest(targetModel, fallbackConfig);
     json = await res.json();
   }
 
@@ -449,13 +474,79 @@ async function callGroq(apiKey: string, model: string, prompt: string, base64: s
   return parseAiJson(json.choices?.[0]?.message?.content);
 }
 
-function parseAiJson(raw: string | undefined) {
+function parseAiJson(raw: string | undefined): { bubbles: any[] } {
   if (!raw) throw new Error('AI returned empty response');
   let cleaned = raw.trim();
+
+  // Strip markdown code fences if present
   if (cleaned.startsWith('```json')) cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
   else if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+
   const fb = cleaned.indexOf('{');
   const lb = cleaned.lastIndexOf('}');
   if (fb !== -1 && lb > fb) cleaned = cleaned.substring(fb, lb + 1);
-  return JSON.parse(cleaned);
+
+  // Attempt 1: Standard JSON parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed && Array.isArray(parsed.bubbles)) {
+      return { bubbles: parsed.bubbles };
+    }
+  } catch (err) {
+    // Continue to repair attempts
+  }
+
+  // Attempt 2: Sanitize common JSON errors (trailing commas, unescaped newlines in strings)
+  try {
+    let sanitized = cleaned
+      // Remove trailing commas before } or ]
+      .replace(/,\s*([}\]])/g, '$1')
+      // Replace unescaped control characters inside strings
+      .replace(/[\u0000-\u001F]+/g, (match) => {
+        if (match === '\n' || match === '\r') return ' ';
+        return '';
+      });
+
+    const parsed = JSON.parse(sanitized);
+    if (parsed && Array.isArray(parsed.bubbles)) {
+      return { bubbles: parsed.bubbles };
+    }
+  } catch (err) {
+    // Continue to repair attempts
+  }
+
+  // Attempt 3: Regex extraction of individual valid bubble objects
+  // Recovers all complete bubbles even if output was truncated or corrupted mid-stream
+  const recoveredBubbles: any[] = [];
+  const bubbleRegex = /\{[^{}]*"box_2d"\s*:\s*\[([0-9\s,.-]+)\][^{}]*"translated_text"\s*:\s*"((?:[^"\\]|\\.)*)"[^{}]*\}/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = bubbleRegex.exec(cleaned)) !== null) {
+    try {
+      const boxCoords = match[1].split(',').map(n => parseFloat(n.trim())).filter(n => !isNaN(n));
+      const transText = match[2].replace(/\\"/g, '"').trim();
+      if (boxCoords.length === 4 && transText) {
+        // Look for optional background or raw_text within the matched block
+        const block = match[0];
+        const rawMatch = block.match(/"raw_text"\s*:\s*"((?:[^"\\]|\\.)*)"/i);
+        const bgMatch = block.match(/"background"\s*:\s*"(white|dark|transparent)"/i);
+        const typeMatch = block.match(/"type"\s*:\s*"(dialogue|sfx|narration)"/i);
+
+        recoveredBubbles.push({
+          box_2d: boxCoords,
+          translated_text: transText,
+          raw_text: rawMatch ? rawMatch[1] : '',
+          background: bgMatch ? bgMatch[1] : 'white',
+          type: typeMatch ? typeMatch[1] : 'dialogue',
+        });
+      }
+    } catch (_) {}
+  }
+
+  if (recoveredBubbles.length > 0) {
+    return { bubbles: recoveredBubbles };
+  }
+
+  // Fallback: If absolutely no bubble could be extracted, throw friendly error
+  throw new Error('AI produced an unparseable response. Please retry.');
 }

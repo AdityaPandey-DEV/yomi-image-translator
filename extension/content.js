@@ -552,7 +552,11 @@
       // 1. Universal Coordinate Resolution (supporting 0..1000, 0.0..1.0, and pixel coordinates)
       const rawBox = b.box_2d || b.bounding_box || b.box;
       if (Array.isArray(rawBox) && rawBox.length === 4) {
-        const [y1, x1, y2, x2] = rawBox.map(Number);
+        const [rawY1, rawX1, rawY2, rawX2] = rawBox.map(Number);
+        const y1 = Math.min(rawY1, rawY2);
+        const y2 = Math.max(rawY1, rawY2);
+        const x1 = Math.min(rawX1, rawX2);
+        const x2 = Math.max(rawX1, rawX2);
         const maxVal = Math.max(y1, x1, y2, x2);
 
         if (maxVal <= 1.0) {

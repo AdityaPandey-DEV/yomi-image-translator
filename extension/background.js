@@ -169,7 +169,7 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
   return true;
 });
 
-// Universal image fetcher converting ArrayBuffer to Base64 in safe 8KB chunks
+// Universal image fetcher converting ArrayBuffer to Base64 with smart downscaling
 async function fetchImageBase64(imageUrl) {
   let base64Data = '';
   let mimeType = 'image/jpeg';
@@ -178,14 +178,45 @@ async function fetchImageBase64(imageUrl) {
     base64Data = imageUrl.split(',')[1];
     const match = imageUrl.match(/^data:([^;]+);/);
     if (match) mimeType = match[1];
-  } else {
-    const res = await fetch(imageUrl);
-    if (!res.ok) throw new Error(`Could not load image: HTTP ${res.status}`);
-    const blob = await res.blob();
-    mimeType = blob.type || 'image/jpeg';
-    const buffer = await blob.arrayBuffer();
-    base64Data = bufferToBase64(buffer);
+    return { base64Data, mimeType };
   }
+
+  const res = await fetch(imageUrl);
+  if (!res.ok) throw new Error(`Could not load image: HTTP ${res.status}`);
+  let blob = await res.blob();
+  mimeType = blob.type || 'image/jpeg';
+
+  // Smart downscaling for giant webtoon strips to prevent Vercel 4.5MB payload limits & 10s timeouts
+  try {
+    if (typeof createImageBitmap !== 'undefined' && typeof OffscreenCanvas !== 'undefined') {
+      const bitmap = await createImageBitmap(blob);
+      const maxDim = 2048;
+      if (bitmap.width > maxDim || bitmap.height > maxDim) {
+        let targetW = bitmap.width;
+        let targetH = bitmap.height;
+        if (targetW > targetH) {
+          targetH = Math.round((targetH * maxDim) / targetW);
+          targetW = maxDim;
+        } else {
+          targetW = Math.round((targetW * maxDim) / targetH);
+          targetH = maxDim;
+        }
+
+        const canvas = new OffscreenCanvas(targetW, targetH);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+          blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.88 });
+          mimeType = 'image/jpeg';
+        }
+      }
+    }
+  } catch (resizeErr) {
+    console.warn('[Background] Image downscale fallback to original:', resizeErr);
+  }
+
+  const buffer = await blob.arrayBuffer();
+  base64Data = bufferToBase64(buffer);
 
   return { base64Data, mimeType };
 }
